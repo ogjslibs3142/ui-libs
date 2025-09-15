@@ -1,23 +1,54 @@
-// uiHelpers.js
-// Minimal UI helper library for beginner-friendly apps
-// - All controls render line-by-line, horizontally centered.
-// - Upward compatible: existing code using UI.Create/On/SetValue still works.
-// - Features: options param, default-event auto-wiring, GetValue, SetPageTitle, SetPageColor.
-// - NEW: options.title -> renders a left-aligned label above the control (except Label/NewLine).
+// uiHelpers.js (unminified)
+// Beginner-friendly UI helper library for simple web apps (works great in editor.p5js.org)
+//
+// Goals:
+// - Ultra-simple visual layout: line-by-line, horizontally centered.
+// - Intuitive control creation: UI.Create(type, id, text, options?)
+// - Clear separation of Visual (Create) vs. Behavior (On / auto-wired default handlers).
+// - Upward compatible API with optional features.
+//
+// Features included:
+// - Controls: Label, NewLine, Button, TextBox, DropDown, RadioList, ScrollBar (range), Image
+// - Default-event *auto-wiring*: if <id>_<defaultEvent>() exists, it will be attached automatically
+//   e.g., Button → click → function btnSayHello_click(){ ... }
+//         TextBox → input → function txtName_input(){ ... }
+//         ScrollBar → input → function vol_input(){ ... }   (fires continuously while sliding)
+//         DropDown/RadioList → change → function ddlCity_change(){ ... }
+//         Image → click → function logo_click(){ ... }
+// - Helpers: UI.On, UI.SetValue, UI.GetValue, UI.SetPageTitle, UI.SetPageColor, UI.SetAutoWire
+// - Title label (left-aligned) above any control via options.title
+// - Sizing via options.width / options.height (numbers = px, or CSS string)
+// - NEW: options.style = { any standard CSS } applied to the control (overrides width/height if present)
+//        options.titleStyle / options.wrapperStyle for styling the title label or its wrapper
+//
+// Usage example:
+//   UI.Create("Label", "lblTitle", "The RGB Colors Mixer App");
+//   UI.Create("ScrollBar", "hsbBlue", "", {
+//     title: "Blue (0–255):",
+//     min: 0, max: 255, value: 128,
+//     width: "260px",
+//     style: { width: "340px", accentColor: "blue", marginTop: "6px" } // 'style' wins if both set
+//   });
+//
+//   function hsbBlue_input(){ /* runs automatically on slide */ }
+//
+// Notes:
+// - Keep helpers loaded BEFORE student code (sketch.js).
+// - This file is safe to host on GitHub Pages and reference via <script src="...">.
 
 (() => {
   // ====== Configuration / State =====================================================
   const app = document.getElementById("app") || document.body;
   let currentLine = null;
-  let AUTO_WIRE_DEFAULT_EVENTS = true; // can be toggled via UI.SetAutoWire(false)
+  let AUTO_WIRE_DEFAULT_EVENTS = true; // Toggle via UI.SetAutoWire(false) for advanced lessons
 
-  // Default event name per control type (lowercase type names)
+  // Default event name per control type (lowercase)
   const DEFAULT_EVENTS = {
     button: "click",
     textbox: "input",
     dropdown: "change",
     radiolist: "change",
-    scrollbar: "input",
+    scrollbar: "input", // fires continuously while sliding
     image: "click",
     label: null,
     newline: null
@@ -35,7 +66,7 @@
     range: "width:min(90%,520px);",
     image: "max-width:90%;height:auto;display:block;",
 
-    // NEW for titled fields:
+    // Field stack used when options.title is present
     fieldWrap: "display:flex;flex-direction:column;align-items:flex-start;gap:6px;",
     title: "font:600 0.95rem system-ui, sans-serif;text-align:left;"
   };
@@ -73,26 +104,40 @@
     }
   }
 
-  // Apply width/height from options; accepts numbers (px) or CSS strings
-  function applySize(el, options = {}) {
-    const { width, height } = options;
-    if (width != null)  el.style.width  = typeof width  === "number" ? `${width}px`  : String(width);
-    if (height != null) el.style.height = typeof height === "number" ? `${height}px` : String(height);
+  function applyInlineStyle(target, style) {
+    if (!target || style == null) return;
+    if (typeof style === "string") {
+      target.style.cssText += ";" + style;
+    } else if (typeof style === "object") {
+      Object.assign(target.style, style);
+    }
   }
 
-  // NEW: Wrap a control with a titled container (label above control) when options.title is provided.
+  // Apply width/height then arbitrary CSS via options.style (style takes precedence)
+  function applySize(el, options = {}) {
+    const { width, height, style } = options;
+    if (width != null)  el.style.width  = typeof width  === "number" ? `${width}px`  : String(width);
+    if (height != null) el.style.height = typeof height === "number" ? `${height}px` : String(height);
+    if (style && typeof style === "object") {
+      Object.assign(el.style, style); // style.* overrides width/height if both present
+    }
+  }
+
+  // Wrap a control with a titled container (label above control) when options.title is provided.
   // Returns { controlEl, wrap } if a wrapper was created, otherwise returns controlEl directly.
   function wrapWithOptionalTitle(controlEl, id, options = {}) {
     const titleText = options.title;
-    if (!titleText) return controlEl; // no wrapper needed, preserve old behavior
+    if (!titleText) return controlEl;
 
     const wrap = document.createElement("div");
     wrap.setAttribute("style", styles.fieldWrap);
+    applyInlineStyle(wrap, options.wrapperStyle);  // optional wrapper CSS
 
     const lab = document.createElement("label");
     lab.setAttribute("style", styles.title);
     lab.textContent = String(titleText);
-    if (id) lab.htmlFor = id; // accessibility
+    if (id) lab.htmlFor = id; // accessibility: associates label with control
+    applyInlineStyle(lab, options.titleStyle);     // optional title CSS
 
     wrap.appendChild(lab);
     wrap.appendChild(controlEl);
@@ -159,6 +204,8 @@
       const sel = document.createElement("select");
       if (id) sel.id = id;
       sel.setAttribute("style", styles.select);
+
+      // Items can be provided as array or comma-separated string via 'text'
       const opts = toArray(text);
       opts.forEach(opt => {
         const o = document.createElement("option");
@@ -166,6 +213,7 @@
         o.textContent = opt;
         sel.appendChild(o);
       });
+
       if (options.value != null) sel.value = options.value;
       applySize(sel, options);
 
@@ -181,6 +229,7 @@
       const wrapGroup = document.createElement("div");
       if (id) wrapGroup.id = id;
       wrapGroup.setAttribute("style", styles.radioWrap);
+
       const opts = toArray(text);
       opts.forEach((opt, i) => {
         const lab = document.createElement("label");
@@ -194,6 +243,8 @@
         lab.appendChild(document.createTextNode(opt));
         wrapGroup.appendChild(lab);
       });
+
+      applySize(wrapGroup, options);
 
       const line = ensureLine();
       const wrapped = wrapWithOptionalTitle(wrapGroup, id, options);
@@ -262,20 +313,22 @@
       console.warn(`UI.SetValue: element #${id} not found`);
       return;
     }
+    // Label created via 'Label' type uses DIV, change its textContent
     if (el.tagName === "DIV") {
       el.textContent = value;
       return;
     }
+    // Inputs/selects have a 'value' property; others fall back to textContent
     if ("value" in el) el.value = value;
     else el.textContent = value;
   }
 
-  // Get value/text (useful for radios/dropdowns/textboxes)
+  // Get value/text (useful for radios/dropdowns/textboxes/scrollbars)
   function GetValue(id) {
     const el = document.getElementById(id);
     if (!el) return undefined;
 
-    // RadioList container
+    // RadioList container: find checked input
     if (el.tagName === "DIV" && el.querySelector('input[type="radio"]')) {
       const checked = el.querySelector('input[type="radio"]:checked');
       return checked ? checked.value : undefined;
@@ -290,7 +343,7 @@
     document.title = text || "";
   }
 
-  // Set page background color (optional helper)
+  // Set page background color
   function SetPageColor(color) {
     document.body.style.backgroundColor = color || "";
   }
@@ -302,8 +355,12 @@
 
   // ====== Export API (read-only) ====================================================
   const API = Object.freeze({
-    Create, On, SetValue, GetValue, SetPageTitle, SetPageColor, SetAutoWire
+    Create, On, SetValue, GetValue, SetPageTitle, SetPageColor, SetAutoWire,
+    __version: "1.3.0"
   });
-  Object.defineProperty(window, "UI", { value: API, writable: false, configurable: false });
-})();
 
+  Object.defineProperty(window, "UI", { value: API, writable: false, configurable: false });
+
+  // Helpful console note so you can confirm which version loaded in p5.js console
+  try { console.log("uiHelpers loaded:", API.__version); } catch {}
+})();
