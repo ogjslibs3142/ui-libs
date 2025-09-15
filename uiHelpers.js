@@ -353,10 +353,24 @@
     AUTO_WIRE_DEFAULT_EVENTS = !!flag;
   }
 
+  // NEW: Set a single CSS style property on an element
+  function SetStyle(id, property, value) {
+    const el = document.getElementById(id);
+    if (!el) {
+      console.warn(`UI.SetStyle: element #${id} not found`);
+      return;
+    }
+    if (typeof property !== "string") {
+      console.warn(`UI.SetStyle: property must be a string`);
+      return;
+    }
+    el.style[property] = value;
+  }
+
   // ====== Export API (read-only) ====================================================
   const API = Object.freeze({
-    Create, On, SetValue, GetValue, SetPageTitle, SetPageColor, SetAutoWire,
-    __version: "1.3.0"
+    Create, On, SetValue, GetValue, SetPageTitle, SetPageColor, SetAutoWire, SetStyle,
+    __version: "1.3.1"
   });
 
   Object.defineProperty(window, "UI", { value: API, writable: false, configurable: false });
