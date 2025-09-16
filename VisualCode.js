@@ -1,6 +1,6 @@
 /* VisualCode.js
    Class-based teaching UI library
-   Version: 4.0.0  (Factories accept id as first param; sets Id immediately)
+   Version: 4.2.0  (Adds Math helpers: Mean/Range/Min/Q1/Median/Q3/Max/Mode + MessageBox modal)
    Exported global: VisualCode
 
    Highlights:
@@ -12,6 +12,7 @@
    - Layout: Layout.Add(...).NewLine()
    - Convention auto-wiring: define functions like id_event() or _id_event() and they attach automatically
    - Helpers: SetPageTitle, SetPageColor, GetValue, SetValue, SetStyle, RewireAll
+   - NEW: Math helpers (TI-84 style quartiles) + MessageBox() modal
 */
 
 (() => {
@@ -319,6 +320,171 @@
     el.style[property] = value;
   }
 
+  // =======================
+  // Math Utility Functions (TI-84 style for quartiles)
+  // =======================
+  function __vc_parseNumberList(str) {
+    return String(str)
+      .split(",")
+      .map(s => parseFloat(s.trim()))
+      .filter(n => !isNaN(n))
+      .sort((a, b) => a - b);
+  }
+
+  function FindMean(str) {
+    const nums = __vc_parseNumberList(str);
+    if (!nums.length) return null;
+    const sum = nums.reduce((a,b)=>a+b,0);
+    return sum / nums.length;
+  }
+  function FindRange(str) {
+    const nums = __vc_parseNumberList(str);
+    if (!nums.length) return null;
+    return nums[nums.length-1] - nums[0];
+  }
+  function FindMinimum(str) {
+    const nums = __vc_parseNumberList(str);
+    if (!nums.length) return null;
+    return nums[0];
+  }
+  function FindMaximum(str) {
+    const nums = __vc_parseNumberList(str);
+    if (!nums.length) return null;
+    return nums[nums.length-1];
+  }
+  function FindMedian(str) {
+    const nums = __vc_parseNumberList(str);
+    if (!nums.length) return null;
+    const n = nums.length, mid = Math.floor(n/2);
+    return (n % 2 === 0) ? (nums[mid-1] + nums[mid]) / 2 : nums[mid];
+  }
+  // TI-84 quartiles: when n is odd, exclude the median from both halves.
+  function FindQ1(str) {
+    const nums = __vc_parseNumberList(str);
+    if (!nums.length) return null;
+    const n = nums.length, mid = Math.floor(n/2);
+    const lower = nums.slice(0, mid);
+    return FindMedian(lower.join(","));
+  }
+  function FindQ3(str) {
+    const nums = __vc_parseNumberList(str);
+    if (!nums.length) return null;
+    const n = nums.length, mid = Math.floor(n/2);
+    const upper = (n % 2 === 0) ? nums.slice(mid) : nums.slice(mid+1);
+    return FindMedian(upper.join(","));
+  }
+  // Mode(s): return array of values with highest frequency; [] if no mode.
+  function FindMode(str) {
+    const nums = __vc_parseNumberList(str);
+    if (!nums.length) return [];
+    const freq = new Map();
+    for (const x of nums) freq.set(x, (freq.get(x) || 0) + 1);
+    let maxF = 0;
+    for (const f of freq.values()) if (f > maxF) maxF = f;
+    if (maxF <= 1) return [];
+    const modes = [];
+    for (const [x,f] of freq.entries()) if (f === maxF) modes.push(x);
+    modes.sort((a,b)=>a-b);
+    return modes;
+  }
+
+  // =======================
+  // UI MessageBox (modal)
+  // =======================
+  // Usage:
+  // v.MessageBox("Hello!", { title: "Info", okText: "Close", copyText: "Copy" });
+  function MessageBox(message, options = {}) {
+    const { title = "Message", okText = "OK", copyText = "Copy" } = options;
+
+    // Overlay
+    const overlay = document.createElement("div");
+    overlay.style.cssText = `
+      position:fixed; inset:0; background:rgba(0,0,0,0.38);
+      display:flex; align-items:center; justify-content:center; z-index:9999;
+    `;
+
+    // Dialog
+    const dlg = document.createElement("div");
+    dlg.setAttribute("role", "dialog");
+    dlg.setAttribute("aria-modal", "true");
+    dlg.style.cssText = `
+      background:#fff; color:#111; max-width:min(90vw, 520px);
+      width: min(90vw, 520px); border-radius:14px; box-shadow:0 20px 60px rgba(0,0,0,.25);
+      padding:16px 16px 12px; font: 14px system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    `;
+
+    const h = document.createElement("div");
+    h.textContent = title;
+    h.style.cssText = `font-weight:700; font-size:16px; margin-bottom:8px;`;
+
+    const msg = document.createElement("div");
+    msg.textContent = String(message ?? "");
+    msg.style.cssText = `
+      white-space: pre-wrap; user-select: text; -webkit-user-select: text;
+      line-height:1.4; margin: 6px 0 12px;
+    `;
+
+    const bar = document.createElement("div");
+    bar.style.cssText = `display:flex; justify-content:flex-end; gap:8px;`;
+
+    const btnCopy = document.createElement("button");
+    btnCopy.type = "button";
+    btnCopy.textContent = copyText;
+    btnCopy.style.cssText = `
+      padding:8px 12px; border-radius:10px; border:1px solid #ccc; background:#f7f7f7; cursor:pointer;
+    `;
+
+    const btnOk = document.createElement("button");
+    btnOk.type = "button";
+    btnOk.textContent = okText;
+    btnOk.style.cssText = `
+      padding:8px 14px; border-radius:10px; border:1px solid #0a7; background:#0a7; color:#fff; cursor:pointer;
+    `;
+
+    bar.appendChild(btnCopy);
+    bar.appendChild(btnOk);
+    dlg.appendChild(h);
+    dlg.appendChild(msg);
+    dlg.appendChild(bar);
+    overlay.appendChild(dlg);
+    document.body.appendChild(overlay);
+
+    // Focus handling
+    const prev = document.activeElement;
+    setTimeout(() => btnOk.focus(), 0);
+
+    function cleanup() {
+      if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      if (prev && typeof prev.focus === "function") prev.focus();
+      document.removeEventListener("keydown", onKey);
+      overlay.removeEventListener("click", onOverlay);
+      btnOk.removeEventListener("click", onOk);
+      btnCopy.removeEventListener("click", onCopy);
+    }
+
+    let resolver;
+    const onOk = () => { cleanup(); resolver(); };
+    const onCopy = () => {
+      try {
+        navigator.clipboard.writeText(msg.textContent || "");
+      } catch {
+        // Fallback: select text for manual copy
+        const r = document.createRange(); r.selectNodeContents(msg);
+        const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      }
+    };
+    const onOverlay = (e) => { if (e.target === overlay) onOk(); };
+    const onKey = (e) => { if (e.key === "Escape" || e.key === "Enter") onOk(); };
+
+    overlay.addEventListener("click", onOverlay);
+    document.addEventListener("keydown", onKey);
+    btnOk.addEventListener("click", onOk);
+    btnCopy.addEventListener("click", onCopy);
+
+    // Promise so callers can await if they want
+    return new Promise(res => { resolver = res; });
+  }
+
   // ---------- export ----------
   const Layout = new LayoutManager(document.getElementById("app") || document.body);
 
@@ -331,9 +497,13 @@
     Create,
     // helpers
     SetPageTitle, SetPageColor, GetValue, SetValue, SetStyle,
+    // math
+    FindMean, FindRange, FindMinimum, FindQ1, FindMedian, FindQ3, FindMaximum, FindMode,
+    // UI
+    MessageBox,
     // wiring
     RewireAll,
-    __version: "4.0.0"
+    __version: "4.2.0"
   });
 
   Object.defineProperty(window, "VisualCode", { value: API, writable: false, configurable: false });
