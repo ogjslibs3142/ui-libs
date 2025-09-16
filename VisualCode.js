@@ -389,101 +389,104 @@
   }
 
   // =======================
-  // UI MessageBox (modal)
-  // =======================
-  // Usage:
-  // v.MessageBox("Hello!", { title: "Info", okText: "Close", copyText: "Copy" });
-  function MessageBox(message, options = {}) {
-    const { title = "Message", okText = "OK", copyText = "Copy" } = options;
+// UI MessageBox (modal) — no Clipboard API, selectable text
+// =======================
+// Usage:
+// v.MessageBox("Hello world!");
+// v.MessageBox("Copy me with Ctrl/Cmd+C", { title: "Info", okText: "Close" });
+// v.MessageBox("Auto-selected text", { selectAllOnOpen: true });
 
-    // Overlay
-    const overlay = document.createElement("div");
-    overlay.style.cssText = `
-      position:fixed; inset:0; background:rgba(0,0,0,0.38);
-      display:flex; align-items:center; justify-content:center; z-index:9999;
-    `;
+function MessageBox(message, options = {}) {
+  const {
+    title = "Message",
+    okText = "OK",
+    selectAllOnOpen = false, // if true, selects the whole message for manual copy
+    closeOnOverlay = true    // click outside to close
+  } = options;
 
-    // Dialog
-    const dlg = document.createElement("div");
-    dlg.setAttribute("role", "dialog");
-    dlg.setAttribute("aria-modal", "true");
-    dlg.style.cssText = `
-      background:#fff; color:#111; max-width:min(90vw, 520px);
-      width: min(90vw, 520px); border-radius:14px; box-shadow:0 20px 60px rgba(0,0,0,.25);
-      padding:16px 16px 12px; font: 14px system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-    `;
+  // Overlay
+  const overlay = document.createElement("div");
+  overlay.style.cssText = `
+    position:fixed; inset:0; background:rgba(0,0,0,0.38);
+    display:flex; align-items:center; justify-content:center; z-index:9999;
+  `;
 
-    const h = document.createElement("div");
-    h.textContent = title;
-    h.style.cssText = `font-weight:700; font-size:16px; margin-bottom:8px;`;
+  // Dialog
+  const dlg = document.createElement("div");
+  dlg.setAttribute("role", "dialog");
+  dlg.setAttribute("aria-modal", "true");
+  dlg.style.cssText = `
+    background:#fff; color:#111; max-width:min(90vw, 520px);
+    width:min(90vw, 520px); border-radius:14px; box-shadow:0 20px 60px rgba(0,0,0,.25);
+    padding:16px 16px 12px; font:14px system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  `;
 
-    const msg = document.createElement("div");
-    msg.textContent = String(message ?? "");
-    msg.style.cssText = `
-      white-space: pre-wrap; user-select: text; -webkit-user-select: text;
-      line-height:1.4; margin: 6px 0 12px;
-    `;
+  const h = document.createElement("div");
+  h.textContent = title;
+  h.style.cssText = `font-weight:700; font-size:16px; margin-bottom:8px;`;
 
-    const bar = document.createElement("div");
-    bar.style.cssText = `display:flex; justify-content:flex-end; gap:8px;`;
+  const msg = document.createElement("div");
+  msg.textContent = String(message ?? "");
+  msg.style.cssText = `
+    white-space: pre-wrap; user-select:text; -webkit-user-select:text;
+    line-height:1.4; margin:6px 0 12px;
+  `;
 
-    const btnCopy = document.createElement("button");
-    btnCopy.type = "button";
-    btnCopy.textContent = copyText;
-    btnCopy.style.cssText = `
-      padding:8px 12px; border-radius:10px; border:1px solid #ccc; background:#f7f7f7; cursor:pointer;
-    `;
+  const bar = document.createElement("div");
+  bar.style.cssText = `display:flex; justify-content:flex-end; gap:8px;`;
 
-    const btnOk = document.createElement("button");
-    btnOk.type = "button";
-    btnOk.textContent = okText;
-    btnOk.style.cssText = `
-      padding:8px 14px; border-radius:10px; border:1px solid #0a7; background:#0a7; color:#fff; cursor:pointer;
-    `;
+  const btnOk = document.createElement("button");
+  btnOk.type = "button";
+  btnOk.textContent = okText;
+  btnOk.style.cssText = `
+    padding:8px 14px; border-radius:10px; border:1px solid #0a7;
+    background:#0a7; color:#fff; cursor:pointer;
+  `;
 
-    bar.appendChild(btnCopy);
-    bar.appendChild(btnOk);
-    dlg.appendChild(h);
-    dlg.appendChild(msg);
-    dlg.appendChild(bar);
-    overlay.appendChild(dlg);
-    document.body.appendChild(overlay);
+  bar.appendChild(btnOk);
+  dlg.appendChild(h);
+  dlg.appendChild(msg);
+  dlg.appendChild(bar);
+  overlay.appendChild(dlg);
+  document.body.appendChild(overlay);
 
-    // Focus handling
-    const prev = document.activeElement;
-    setTimeout(() => btnOk.focus(), 0);
-
-    function cleanup() {
-      if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
-      if (prev && typeof prev.focus === "function") prev.focus();
-      document.removeEventListener("keydown", onKey);
-      overlay.removeEventListener("click", onOverlay);
-      btnOk.removeEventListener("click", onOk);
-      btnCopy.removeEventListener("click", onCopy);
-    }
-
-    let resolver;
-    const onOk = () => { cleanup(); resolver(); };
-    const onCopy = () => {
+  const prev = document.activeElement;
+  setTimeout(() => {
+    btnOk.focus();
+    if (selectAllOnOpen) {
       try {
-        navigator.clipboard.writeText(msg.textContent || "");
-      } catch {
-        // Fallback: select text for manual copy
-        const r = document.createRange(); r.selectNodeContents(msg);
-        const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
-      }
-    };
-    const onOverlay = (e) => { if (e.target === overlay) onOk(); };
-    const onKey = (e) => { if (e.key === "Escape" || e.key === "Enter") onOk(); };
+        const r = document.createRange();
+        r.selectNodeContents(msg);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(r);
+      } catch {}
+    }
+  }, 0);
 
-    overlay.addEventListener("click", onOverlay);
-    document.addEventListener("keydown", onKey);
-    btnOk.addEventListener("click", onOk);
-    btnCopy.addEventListener("click", onCopy);
-
-    // Promise so callers can await if they want
-    return new Promise(res => { resolver = res; });
+  function cleanup() {
+    if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+    if (prev && typeof prev.focus === "function") prev.focus();
+    document.removeEventListener("keydown", onKey);
+    if (closeOnOverlay) overlay.removeEventListener("click", onOverlay);
+    btnOk.removeEventListener("click", onOk);
   }
+
+  let resolver;
+  const onOk = () => { cleanup(); resolver(); };
+  const onOverlay = (e) => { if (e.target === overlay) onOk(); };
+  const onKey = (e) => {
+    if (e.key === "Escape" || e.key === "Enter") onOk();
+    // Let the user copy with Ctrl/Cmd+C; don’t block default behavior
+  };
+
+  if (closeOnOverlay) overlay.addEventListener("click", onOverlay);
+  document.addEventListener("keydown", onKey);
+  btnOk.addEventListener("click", onOk);
+
+  return new Promise(res => { resolver = res; });
+}
+
 
   // ---------- export ----------
   const Layout = new LayoutManager(document.getElementById("app") || document.body);
@@ -509,3 +512,4 @@
   Object.defineProperty(window, "VisualCode", { value: API, writable: false, configurable: false });
   try { console.log("VisualCode loaded:", API.__version); } catch {}
 })();
+
