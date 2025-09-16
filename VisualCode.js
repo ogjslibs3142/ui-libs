@@ -1,16 +1,16 @@
 /* VisualCode.js
    Class-based teaching UI library
-   Version: 3.1.0  (Proxy-based Control to forward unknown props to CSS styles)
+   Version: 4.0.0  (Factories accept id as first param; sets Id immediately)
    Exported global: VisualCode
 
    Highlights:
-   - Create controls as objects (Label, Button, TextBox, ScrollBar, DropDown, RadioList, Image)
-   - Generic Create(tag, options) for any HTML element (attrs, props, style, title, id)
-   - Simple properties: Text, Title, Id, Value, Items, etc. (PascalCase = library features)
-   - Natural CSS usage via Proxy: txt.width = "300px", btn.backgroundColor = "black", lbl.fontSize = "20px"
-   - Also supports Style helpers: ctrl.Style("prop","val") and ctrl.Style = { ... } or "css: v;"
-   - Line-by-line layout: Layout.Add(...), Layout.NewLine()
-   - Convention auto-wiring: id_event() or _id_event() attaches if element supports that event
+   - Factories with id-first: CreateLabel(id, text), CreateTextBox(id, value), CreateButton(id, text),
+     CreateScrollBar(id, opts), CreateDropDown(id, items, value), CreateRadioList(id, items, value), CreateImage(id, src, opts)
+   - Generic Create(tag, { id, title, attrs, props, style, defaultEvent })
+   - Titles: control.Title = "..."
+   - CSS via Proxy: control.width = "300px", control.color = "blue", or control.Style("prop","val") / control.Style = {...}
+   - Layout: Layout.Add(...).NewLine()
+   - Convention auto-wiring: define functions like id_event() or _id_event() and they attach automatically
    - Helpers: SetPageTitle, SetPageColor, GetValue, SetValue, SetStyle, RewireAll
 */
 
@@ -249,15 +249,44 @@
     return null;
   }
 
-  // ---------- factories ----------
-  function CreateLabel(text){ return new Label(text); }
-  function CreateButton(text){ return new Button(text); }
-  function CreateTextBox(value){ return new TextBox(value); }
-  function CreateScrollBar(opts){ return new ScrollBar(opts); }
-  function CreateDropDown(items, value){ return new DropDown(items, value); }
-  function CreateRadioList(items, value){ return new RadioList(items, value); }
-  function CreateImage(src, opts){ return new ImageCtrl(src, opts); }
-  // Generic
+  // ---------- factories (id-first) ----------
+  function CreateLabel(id, text = "") {
+    const c = new Label(text);
+    if (id) c.Id = id;
+    return c;
+  }
+  function CreateButton(id, text = "Button") {
+    const c = new Button(text);
+    if (id) c.Id = id;
+    return c;
+  }
+  function CreateTextBox(id, value = "") {
+    const c = new TextBox(value);
+    if (id) c.Id = id;
+    return c;
+  }
+  function CreateScrollBar(id, opts = {}) {
+    const c = new ScrollBar(opts);
+    if (id) c.Id = id;
+    return c;
+  }
+  function CreateDropDown(id, items = [], value = null) {
+    const c = new DropDown(items, value);
+    if (id) c.Id = id;
+    return c;
+  }
+  function CreateRadioList(id, items = [], value = null) {
+    const c = new RadioList(items, value);
+    if (id) c.Id = id;
+    return c;
+  }
+  function CreateImage(id, src = "", opts = {}) {
+    const c = new ImageCtrl(src, opts);
+    if (id) c.Id = id;
+    return c;
+  }
+
+  // Generic factory: Create(tag, { id, title, attrs, props, style, defaultEvent })
   function Create(tagOrType, options = {}) {
     const defaultEvent = options.defaultEvent ?? guessDefaultEventFor(tagOrType, options.attrs);
     return new GenericControl(tagOrType, { ...options, defaultEvent });
@@ -296,7 +325,7 @@
   const API = Object.freeze({
     // layout
     Layout, NewLine: () => Layout.NewLine(), Add: c => Layout.Add(c),
-    // factories (specific)
+    // factories (specific, id-first)
     CreateLabel, CreateButton, CreateTextBox, CreateScrollBar, CreateDropDown, CreateRadioList, CreateImage,
     // factory (generic)
     Create,
@@ -304,7 +333,7 @@
     SetPageTitle, SetPageColor, GetValue, SetValue, SetStyle,
     // wiring
     RewireAll,
-    __version: "3.1.0"
+    __version: "4.0.0"
   });
 
   Object.defineProperty(window, "VisualCode", { value: API, writable: false, configurable: false });
