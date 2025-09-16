@@ -1,18 +1,18 @@
 /* VisualCode.js
    Class-based teaching UI library
-   Version: 4.2.0  (Adds Math helpers: Mean/Range/Min/Q1/Median/Q3/Max/Mode + MessageBox modal)
+   Version: 4.2.1  (Math helpers + MessageBox w/ selectable text; no Clipboard API)
    Exported global: VisualCode
 
    Highlights:
-   - Factories with id-first: CreateLabel(id, text), CreateTextBox(id, value), CreateButton(id, text),
+   - Factories (id-first): CreateLabel(id, text), CreateTextBox(id, value), CreateButton(id, text),
      CreateScrollBar(id, opts), CreateDropDown(id, items, value), CreateRadioList(id, items, value), CreateImage(id, src, opts)
    - Generic Create(tag, { id, title, attrs, props, style, defaultEvent })
    - Titles: control.Title = "..."
    - CSS via Proxy: control.width = "300px", control.color = "blue", or control.Style("prop","val") / control.Style = {...}
    - Layout: Layout.Add(...).NewLine()
-   - Convention auto-wiring: define functions like id_event() or _id_event() and they attach automatically
+   - Auto-wiring by convention: define functions like id_event() or _id_event()
    - Helpers: SetPageTitle, SetPageColor, GetValue, SetValue, SetStyle, RewireAll
-   - NEW: Math helpers (TI-84 style quartiles) + MessageBox() modal
+   - Math helpers (TI-84 style quartiles) + MessageBox() modal (selectable text)
 */
 
 (() => {
@@ -105,7 +105,6 @@
       recordWired(el, evt, name);
     }
   }
-
   function RewireAll() {
     document.querySelectorAll("[id]").forEach(el => autoWireAllByConvention(el, el.id));
   }
@@ -251,41 +250,13 @@
   }
 
   // ---------- factories (id-first) ----------
-  function CreateLabel(id, text = "") {
-    const c = new Label(text);
-    if (id) c.Id = id;
-    return c;
-  }
-  function CreateButton(id, text = "Button") {
-    const c = new Button(text);
-    if (id) c.Id = id;
-    return c;
-  }
-  function CreateTextBox(id, value = "") {
-    const c = new TextBox(value);
-    if (id) c.Id = id;
-    return c;
-  }
-  function CreateScrollBar(id, opts = {}) {
-    const c = new ScrollBar(opts);
-    if (id) c.Id = id;
-    return c;
-  }
-  function CreateDropDown(id, items = [], value = null) {
-    const c = new DropDown(items, value);
-    if (id) c.Id = id;
-    return c;
-  }
-  function CreateRadioList(id, items = [], value = null) {
-    const c = new RadioList(items, value);
-    if (id) c.Id = id;
-    return c;
-  }
-  function CreateImage(id, src = "", opts = {}) {
-    const c = new ImageCtrl(src, opts);
-    if (id) c.Id = id;
-    return c;
-  }
+  function CreateLabel(id, text = "") { const c = new Label(text); if (id) c.Id = id; return c; }
+  function CreateButton(id, text = "Button") { const c = new Button(text); if (id) c.Id = id; return c; }
+  function CreateTextBox(id, value = "") { const c = new TextBox(value); if (id) c.Id = id; return c; }
+  function CreateScrollBar(id, opts = {}) { const c = new ScrollBar(opts); if (id) c.Id = id; return c; }
+  function CreateDropDown(id, items = [], value = null) { const c = new DropDown(items, value); if (id) c.Id = id; return c; }
+  function CreateRadioList(id, items = [], value = null) { const c = new RadioList(items, value); if (id) c.Id = id; return c; }
+  function CreateImage(id, src = "", opts = {}) { const c = new ImageCtrl(src, opts); if (id) c.Id = id; return c; }
 
   // Generic factory: Create(tag, { id, title, attrs, props, style, defaultEvent })
   function Create(tagOrType, options = {}) {
@@ -389,104 +360,98 @@
   }
 
   // =======================
-// UI MessageBox (modal) — no Clipboard API, selectable text
-// =======================
-// Usage:
-// v.MessageBox("Hello world!");
-// v.MessageBox("Copy me with Ctrl/Cmd+C", { title: "Info", okText: "Close" });
-// v.MessageBox("Auto-selected text", { selectAllOnOpen: true });
+  // UI MessageBox (modal) — no Clipboard API, selectable text
+  // =======================
+  // Usage:
+  // v.MessageBox("Hello!");
+  // v.MessageBox("Copy with Ctrl/Cmd+C", { title:"Info", okText:"Close", selectAllOnOpen:true });
+  function MessageBox(message, options = {}) {
+    const {
+      title = "Message",
+      okText = "OK",
+      selectAllOnOpen = false, // if true, selects the message text on open
+      closeOnOverlay = true    // click outside to close
+    } = options;
 
-function MessageBox(message, options = {}) {
-  const {
-    title = "Message",
-    okText = "OK",
-    selectAllOnOpen = false, // if true, selects the whole message for manual copy
-    closeOnOverlay = true    // click outside to close
-  } = options;
+    // Overlay
+    const overlay = document.createElement("div");
+    overlay.style.cssText = `
+      position:fixed; inset:0; background:rgba(0,0,0,0.38);
+      display:flex; align-items:center; justify-content:center; z-index:9999;
+    `;
 
-  // Overlay
-  const overlay = document.createElement("div");
-  overlay.style.cssText = `
-    position:fixed; inset:0; background:rgba(0,0,0,0.38);
-    display:flex; align-items:center; justify-content:center; z-index:9999;
-  `;
+    // Dialog
+    const dlg = document.createElement("div");
+    dlg.setAttribute("role", "dialog");
+    dlg.setAttribute("aria-modal", "true");
+    dlg.style.cssText = `
+      background:#fff; color:#111; max-width:min(90vw, 520px);
+      width:min(90vw, 520px); border-radius:14px; box-shadow:0 20px 60px rgba(0,0,0,.25);
+      padding:16px 16px 12px; font:14px system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    `;
 
-  // Dialog
-  const dlg = document.createElement("div");
-  dlg.setAttribute("role", "dialog");
-  dlg.setAttribute("aria-modal", "true");
-  dlg.style.cssText = `
-    background:#fff; color:#111; max-width:min(90vw, 520px);
-    width:min(90vw, 520px); border-radius:14px; box-shadow:0 20px 60px rgba(0,0,0,.25);
-    padding:16px 16px 12px; font:14px system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-  `;
+    const h = document.createElement("div");
+    h.textContent = title;
+    h.style.cssText = `font-weight:700; font-size:16px; margin-bottom:8px;`;
 
-  const h = document.createElement("div");
-  h.textContent = title;
-  h.style.cssText = `font-weight:700; font-size:16px; margin-bottom:8px;`;
+    const msg = document.createElement("div");
+    msg.textContent = String(message ?? "");
+    msg.style.cssText = `
+      white-space: pre-wrap; user-select:text; -webkit-user-select:text;
+      line-height:1.4; margin:6px 0 12px;
+    `;
 
-  const msg = document.createElement("div");
-  msg.textContent = String(message ?? "");
-  msg.style.cssText = `
-    white-space: pre-wrap; user-select:text; -webkit-user-select:text;
-    line-height:1.4; margin:6px 0 12px;
-  `;
+    const bar = document.createElement("div");
+    bar.style.cssText = `display:flex; justify-content:flex-end; gap:8px;`;
 
-  const bar = document.createElement("div");
-  bar.style.cssText = `display:flex; justify-content:flex-end; gap:8px;`;
+    const btnOk = document.createElement("button");
+    btnOk.type = "button";
+    btnOk.textContent = okText;
+    btnOk.style.cssText = `
+      padding:8px 14px; border-radius:10px; border:1px solid #0a7;
+      background:#0a7; color:#fff; cursor:pointer;
+    `;
 
-  const btnOk = document.createElement("button");
-  btnOk.type = "button";
-  btnOk.textContent = okText;
-  btnOk.style.cssText = `
-    padding:8px 14px; border-radius:10px; border:1px solid #0a7;
-    background:#0a7; color:#fff; cursor:pointer;
-  `;
+    bar.appendChild(btnOk);
+    dlg.appendChild(h);
+    dlg.appendChild(msg);
+    dlg.appendChild(bar);
+    overlay.appendChild(dlg);
+    document.body.appendChild(overlay);
 
-  bar.appendChild(btnOk);
-  dlg.appendChild(h);
-  dlg.appendChild(msg);
-  dlg.appendChild(bar);
-  overlay.appendChild(dlg);
-  document.body.appendChild(overlay);
+    const prev = document.activeElement;
+    setTimeout(() => {
+      btnOk.focus();
+      if (selectAllOnOpen) {
+        try {
+          const r = document.createRange();
+          r.selectNodeContents(msg);
+          const sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(r);
+        } catch {}
+      }
+    }, 0);
 
-  const prev = document.activeElement;
-  setTimeout(() => {
-    btnOk.focus();
-    if (selectAllOnOpen) {
-      try {
-        const r = document.createRange();
-        r.selectNodeContents(msg);
-        const sel = window.getSelection();
-        sel.removeAllRanges();
-        sel.addRange(r);
-      } catch {}
+    function cleanup() {
+      if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      if (prev && typeof prev.focus === "function") prev.focus();
+      document.removeEventListener("keydown", onKey);
+      if (closeOnOverlay) overlay.removeEventListener("click", onOverlay);
+      btnOk.removeEventListener("click", onOk);
     }
-  }, 0);
 
-  function cleanup() {
-    if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
-    if (prev && typeof prev.focus === "function") prev.focus();
-    document.removeEventListener("keydown", onKey);
-    if (closeOnOverlay) overlay.removeEventListener("click", onOverlay);
-    btnOk.removeEventListener("click", onOk);
+    let resolver;
+    const onOk = () => { cleanup(); resolver(); };
+    const onOverlay = (e) => { if (e.target === overlay) onOk(); };
+    const onKey = (e) => { if (e.key === "Escape" || e.key === "Enter") onOk(); };
+
+    if (closeOnOverlay) overlay.addEventListener("click", onOverlay);
+    document.addEventListener("keydown", onKey);
+    btnOk.addEventListener("click", onOk);
+
+    return new Promise(res => { resolver = res; });
   }
-
-  let resolver;
-  const onOk = () => { cleanup(); resolver(); };
-  const onOverlay = (e) => { if (e.target === overlay) onOk(); };
-  const onKey = (e) => {
-    if (e.key === "Escape" || e.key === "Enter") onOk();
-    // Let the user copy with Ctrl/Cmd+C; don’t block default behavior
-  };
-
-  if (closeOnOverlay) overlay.addEventListener("click", onOverlay);
-  document.addEventListener("keydown", onKey);
-  btnOk.addEventListener("click", onOk);
-
-  return new Promise(res => { resolver = res; });
-}
-
 
   // ---------- export ----------
   const Layout = new LayoutManager(document.getElementById("app") || document.body);
@@ -506,10 +471,9 @@ function MessageBox(message, options = {}) {
     MessageBox,
     // wiring
     RewireAll,
-    __version: "4.2.0"
+    __version: "4.2.1"
   });
 
   Object.defineProperty(window, "VisualCode", { value: API, writable: false, configurable: false });
   try { console.log("VisualCode loaded:", API.__version); } catch {}
 })();
-
