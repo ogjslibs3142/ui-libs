@@ -1,6 +1,6 @@
 /* VisualCode.js
    Class-based teaching UI library
-   Version: 4.2.1  (Math helpers + MessageBox w/ selectable text; no Clipboard API)
+   Version: 4.3.1  (Adds Auto-Flow instant display while keeping Layout for structured rows)
    Exported global: VisualCode
 
    Highlights:
@@ -13,6 +13,7 @@
    - Auto-wiring by convention: define functions like id_event() or _id_event()
    - Helpers: SetPageTitle, SetPageColor, GetValue, SetValue, SetStyle, RewireAll
    - Math helpers (TI-84 style quartiles) + MessageBox() modal (selectable text)
+   - NEW: Auto-Flow — controls appear immediately on creation; later Layout organizes them
 */
 
 (() => {
@@ -62,6 +63,35 @@
   }
   function supportsEvent(el, evtName) { return ("on" + evtName) in el; }
   function escapeRegexLiteral(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+
+  // --- Auto-Flow (show controls as they’re created) ---
+  const __flow = {
+    enabled: true,
+    root: (document.getElementById("app") || document.body),
+    styleApplied: false
+  };
+  function __applyFlowStyleOnce() {
+    if (__flow.styleApplied || !__flow.root) return;
+    __flow.root.style.display = "flex";
+    __flow.root.style.flexWrap = "wrap";
+    __flow.root.style.justifyContent = "center";
+    __flow.root.style.alignItems = "center";
+    __flow.root.style.gap = "12px";
+    __flow.root.style.margin = "10px 0";
+    __flow.styleApplied = true;
+  }
+  function __maybeFlowAppend(control) {
+    if (!control) return;
+    if (__flow.enabled && __flow.root) {
+      __applyFlowStyleOnce();
+      __flow.root.appendChild(control._node()); // initial placement; Layout moves it later
+    }
+  }
+  function SetAutoFlow(on = true) { __flow.enabled = !!on; }
+  function SetAutoFlowRoot(elOrId) {
+    const el = (typeof elOrId === "string") ? document.getElementById(elOrId) : elOrId;
+    if (el) { __flow.root = el; __flow.styleApplied = false; }
+  }
 
   // Dedup: element -> Map(event -> Set(handlerName))
   const wiredMap = new WeakMap();
@@ -250,18 +280,55 @@
   }
 
   // ---------- factories (id-first) ----------
-  function CreateLabel(id, text = "") { const c = new Label(text); if (id) c.Id = id; return c; }
-  function CreateButton(id, text = "Button") { const c = new Button(text); if (id) c.Id = id; return c; }
-  function CreateTextBox(id, value = "") { const c = new TextBox(value); if (id) c.Id = id; return c; }
-  function CreateScrollBar(id, opts = {}) { const c = new ScrollBar(opts); if (id) c.Id = id; return c; }
-  function CreateDropDown(id, items = [], value = null) { const c = new DropDown(items, value); if (id) c.Id = id; return c; }
-  function CreateRadioList(id, items = [], value = null) { const c = new RadioList(items, value); if (id) c.Id = id; return c; }
-  function CreateImage(id, src = "", opts = {}) { const c = new ImageCtrl(src, opts); if (id) c.Id = id; return c; }
+  function CreateLabel(id, text = "") {
+    const c = new Label(text);
+    if (id) c.Id = id;
+    __maybeFlowAppend(c);
+    return c;
+  }
+  function CreateButton(id, text = "Button") {
+    const c = new Button(text);
+    if (id) c.Id = id;
+    __maybeFlowAppend(c);
+    return c;
+  }
+  function CreateTextBox(id, value = "") {
+    const c = new TextBox(value);
+    if (id) c.Id = id;
+    __maybeFlowAppend(c);
+    return c;
+  }
+  function CreateScrollBar(id, opts = {}) {
+    const c = new ScrollBar(opts);
+    if (id) c.Id = id;
+    __maybeFlowAppend(c);
+    return c;
+  }
+  function CreateDropDown(id, items = [], value = null) {
+    const c = new DropDown(items, value);
+    if (id) c.Id = id;
+    __maybeFlowAppend(c);
+    return c;
+  }
+  function CreateRadioList(id, items = [], value = null) {
+    const c = new RadioList(items, value);
+    if (id) c.Id = id;
+    __maybeFlowAppend(c);
+    return c;
+  }
+  function CreateImage(id, src = "", opts = {}) {
+    const c = new ImageCtrl(src, opts);
+    if (id) c.Id = id;
+    __maybeFlowAppend(c);
+    return c;
+  }
 
   // Generic factory: Create(tag, { id, title, attrs, props, style, defaultEvent })
   function Create(tagOrType, options = {}) {
     const defaultEvent = options.defaultEvent ?? guessDefaultEventFor(tagOrType, options.attrs);
-    return new GenericControl(tagOrType, { ...options, defaultEvent });
+    const c = new GenericControl(tagOrType, { ...options, defaultEvent });
+    __maybeFlowAppend(c);
+    return c;
   }
 
   // ---------- page helpers ----------
@@ -345,19 +412,19 @@
     return FindMedian(upper.join(","));
   }
   // Mode(s): return array of values with highest frequency; ["none"] if no mode.
-function FindMode(str) {
-  const nums = __vc_parseNumberList(str);
-  if (!nums.length) return ["none"];
-  const freq = new Map();
-  for (const x of nums) freq.set(x, (freq.get(x) || 0) + 1);
-  let maxF = 0;
-  for (const f of freq.values()) if (f > maxF) maxF = f;
-  if (maxF <= 1) return ["none"];   // no repeats → no mode
-  const modes = [];
-  for (const [x,f] of freq.entries()) if (f === maxF) modes.push(x);
-  modes.sort((a,b)=>a-b);
-  return modes;
-}
+  function FindMode(str) {
+    const nums = __vc_parseNumberList(str);
+    if (!nums.length) return ["none"];
+    const freq = new Map();
+    for (const x of nums) freq.set(x, (freq.get(x) || 0) + 1);
+    let maxF = 0;
+    for (const f of freq.values()) if (f > maxF) maxF = f;
+    if (maxF <= 1) return ["none"];   // no repeats → no mode
+    const modes = [];
+    for (const [x,f] of freq.entries()) if (f === maxF) modes.push(x);
+    modes.sort((a,b)=>a-b);
+    return modes;
+  }
 
   // =======================
   // UI MessageBox (modal) — no Clipboard API, selectable text
@@ -465,16 +532,16 @@ function FindMode(str) {
     Create,
     // helpers
     SetPageTitle, SetPageColor, GetValue, SetValue, SetStyle,
+    SetAutoFlow, SetAutoFlowRoot,        // NEW
     // math
     FindMean, FindRange, FindMinimum, FindQ1, FindMedian, FindQ3, FindMaximum, FindMode,
     // UI
     MessageBox,
     // wiring
     RewireAll,
-    __version: "4.2.1"
+    __version: "4.3.1"
   });
 
   Object.defineProperty(window, "VisualCode", { value: API, writable: false, configurable: false });
   try { console.log("VisualCode loaded:", API.__version); } catch {}
 })();
-
