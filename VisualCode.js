@@ -344,20 +344,20 @@
     const upper = (n % 2 === 0) ? nums.slice(mid) : nums.slice(mid+1);
     return FindMedian(upper.join(","));
   }
-  // Mode(s): return array of values with highest frequency; [] if no mode.
-  function FindMode(str) {
-    const nums = __vc_parseNumberList(str);
-    if (!nums.length) return [];
-    const freq = new Map();
-    for (const x of nums) freq.set(x, (freq.get(x) || 0) + 1);
-    let maxF = 0;
-    for (const f of freq.values()) if (f > maxF) maxF = f;
-    if (maxF <= 1) return [];
-    const modes = [];
-    for (const [x,f] of freq.entries()) if (f === maxF) modes.push(x);
-    modes.sort((a,b)=>a-b);
-    return modes;
-  }
+  // Mode(s): return array of values with highest frequency; ["none"] if no mode.
+function FindMode(str) {
+  const nums = __vc_parseNumberList(str);
+  if (!nums.length) return ["none"];
+  const freq = new Map();
+  for (const x of nums) freq.set(x, (freq.get(x) || 0) + 1);
+  let maxF = 0;
+  for (const f of freq.values()) if (f > maxF) maxF = f;
+  if (maxF <= 1) return ["none"];   // no repeats → no mode
+  const modes = [];
+  for (const [x,f] of freq.entries()) if (f === maxF) modes.push(x);
+  modes.sort((a,b)=>a-b);
+  return modes;
+}
 
   // =======================
   // UI MessageBox (modal) — no Clipboard API, selectable text
@@ -477,3 +477,4 @@
   Object.defineProperty(window, "VisualCode", { value: API, writable: false, configurable: false });
   try { console.log("VisualCode loaded:", API.__version); } catch {}
 })();
+
