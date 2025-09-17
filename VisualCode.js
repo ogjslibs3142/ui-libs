@@ -1,6 +1,6 @@
 /* VisualCode.js
    Class-based teaching UI library
-   Version: 4.3.1  (Adds Auto-Flow instant display while keeping Layout for structured rows)
+   Version: 4.3.2  (Auto-Flow + Title wrapper fix; Math helpers; MessageBox)
    Exported global: VisualCode
 
    Highlights:
@@ -13,7 +13,7 @@
    - Auto-wiring by convention: define functions like id_event() or _id_event()
    - Helpers: SetPageTitle, SetPageColor, GetValue, SetValue, SetStyle, RewireAll
    - Math helpers (TI-84 style quartiles) + MessageBox() modal (selectable text)
-   - NEW: Auto-Flow — controls appear immediately on creation; later Layout organizes them
+   - Auto-Flow — controls appear immediately on creation; later Layout organizes them
 */
 
 (() => {
@@ -84,7 +84,7 @@
     if (!control) return;
     if (__flow.enabled && __flow.root) {
       __applyFlowStyleOnce();
-      __flow.root.appendChild(control._node()); // initial placement; Layout moves it later
+      __flow.root.appendChild(control._node()); // initial placement; Layout can move it later
     }
   }
   function SetAutoFlow(on = true) { __flow.enabled = !!on; }
@@ -181,18 +181,34 @@
     }
     get Id() { return this._id; }
 
-    // title above control
+    // title above control (patched to replace element in place if already in DOM)
     set Title(t) {
       this._title = t || "";
+
       if (!this._wrap) {
+        // Remember current DOM position (for Auto-Flow cases)
+        const parent = this.el.parentNode;
+        const next   = this.el.nextSibling;
+
+        // Build wrapper + label
         this._wrap = document.createElement("div");
         this._wrap.setAttribute("style", styles.fieldWrap);
+
         this._titleEl = document.createElement("label");
         this._titleEl.setAttribute("style", styles.title);
+
+        // Assemble wrapper (moves el inside)
         this._wrap.appendChild(this._titleEl);
         this._wrap.appendChild(this.el);
+
+        // If the input was already in the DOM (Auto-Flow), replace it in-place
+        if (parent) {
+          parent.insertBefore(this._wrap, next);
+        }
+
         if (this._id) this._titleEl.htmlFor = this._id;
       }
+
       this._titleEl.textContent = this._title;
     }
     get Title() { return this._title; }
@@ -532,14 +548,14 @@
     Create,
     // helpers
     SetPageTitle, SetPageColor, GetValue, SetValue, SetStyle,
-    SetAutoFlow, SetAutoFlowRoot,        // NEW
+    SetAutoFlow, SetAutoFlowRoot,
     // math
     FindMean, FindRange, FindMinimum, FindQ1, FindMedian, FindQ3, FindMaximum, FindMode,
     // UI
     MessageBox,
     // wiring
     RewireAll,
-    __version: "4.3.1"
+    __version: "4.3.2"
   });
 
   Object.defineProperty(window, "VisualCode", { value: API, writable: false, configurable: false });
