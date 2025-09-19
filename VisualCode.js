@@ -1,6 +1,6 @@
 /* VisualCode.js
    Class-based teaching UI library
-   Version: 4.3.3  (Auto-Flow + Title wrapper fix; Math helpers; MessageBox)
+   Version: 4.4.1  (Layout host container so NewLine stacks even with Auto-Flow; keeps Auto-Flow + Title wrapper fix)
    Exported global: VisualCode
 
    Highlights:
@@ -9,7 +9,7 @@
    - Generic Create(tag, { id, title, attrs, props, style, defaultEvent })
    - Titles: control.Title = "..."
    - CSS via Proxy: control.width = "300px", control.color = "blue", or control.Style("prop","val") / control.Style = {...}
-   - Layout: Layout.Add(...).NewLine()
+   - Layout: Layout.Add(...).NewLine()  ← rows now stack regardless of Auto-Flow
    - Auto-wiring by convention: define functions like id_event() or _id_event()
    - Helpers: SetPageTitle, SetPageColor, GetValue, SetValue, SetStyle, RewireAll
    - Math helpers (TI-84 style quartiles) + MessageBox() modal (selectable text)
@@ -21,8 +21,7 @@
 
   // ---------- base styles ----------
   const styles = {
-    /////line: "display:flex;justify-content:center;align-items:center;gap:12px;margin:10px 0;",
-    line: "display:flex;justify-content:center;align-items:center;gap:12px;margin:10px 0;width:100%;",
+    line: "display:flex;justify-content:center;align-items:center;gap:12px;margin:10px 0;",
     fieldWrap: "display:flex;flex-direction:column;align-items:flex-start;gap:6px;",
     title: "font:600 0.95rem system-ui, sans-serif;text-align:left;",
     label: "width:100%;text-align:center;font:600 1.5rem system-ui, sans-serif;",
@@ -37,11 +36,25 @@
 
   // ---------- layout manager ----------
   class LayoutManager {
-    constructor(root) { this.root = root || document.body; this.currentLine = null; }
+    constructor(root) {
+      const parent = root || document.body;
+
+      // Dedicated block host so rows stack even if parent is flex (Auto-Flow)
+      const host = document.createElement("div");
+      host.style.display = "block";
+      host.style.width = "100%";
+
+      parent.appendChild(host);
+
+      this.root = host;
+      this.currentLine = null;
+    }
     ensureLine() {
       if (!this.currentLine) {
         const row = document.createElement("div");
         row.setAttribute("style", styles.line);
+        // Make each row take full width within the host
+        row.style.width = "100%";
         this.root.appendChild(row);
         this.currentLine = row;
       }
@@ -182,7 +195,7 @@
     }
     get Id() { return this._id; }
 
-    // title above control (patched to replace element in place if already in DOM)
+    // title above control (replaces element in place if already in DOM)
     set Title(t) {
       this._title = t || "";
 
@@ -556,7 +569,7 @@
     MessageBox,
     // wiring
     RewireAll,
-    __version: "4.3.3"
+    __version: "4.4.1"
   });
 
   Object.defineProperty(window, "VisualCode", { value: API, writable: false, configurable: false });
