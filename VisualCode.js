@@ -1,6 +1,6 @@
 /* VisualCode.js
    Class-based teaching UI library
-   Version: 4.3.2  (Auto-Flow + Title wrapper fix; Math helpers; MessageBox)
+   Version: 4.3.3  (Auto-Flow + Title wrapper fix; Math helpers; MessageBox)
    Exported global: VisualCode
 
    Highlights:
@@ -21,7 +21,8 @@
 
   // ---------- base styles ----------
   const styles = {
-    line: "display:flex;justify-content:center;align-items:center;gap:12px;margin:10px 0;",
+    /////line: "display:flex;justify-content:center;align-items:center;gap:12px;margin:10px 0;",
+    line: "display:flex;justify-content:center;align-items:center;gap:12px;margin:10px 0;width:100%;",
     fieldWrap: "display:flex;flex-direction:column;align-items:flex-start;gap:6px;",
     title: "font:600 0.95rem system-ui, sans-serif;text-align:left;",
     label: "width:100%;text-align:center;font:600 1.5rem system-ui, sans-serif;",
@@ -555,7 +556,7 @@
     MessageBox,
     // wiring
     RewireAll,
-    __version: "4.3.2"
+    __version: "4.3.3"
   });
 
   Object.defineProperty(window, "VisualCode", { value: API, writable: false, configurable: false });
