@@ -544,7 +544,7 @@ function PlotBoxAndWhiskers(min, q1, median, q3, max, position = "bottom") {
   const labels = [
     { x: X(vmin),  text: `Min=${vmin}` },
     { x: X(vq1),   text: `Q1=${vq1}` },
-    { x: X(vmed),  text: `Median=${vmed}`, bold: true },
+    { x: X(vmed),  text: `Med=${vmed}`, bold: true },
     { x: X(vq3),   text: `Q3=${vq3}` },
     { x: X(vmax),  text: `Max=${vmax}` }
   ];
@@ -679,5 +679,6 @@ function PlotBoxAndWhiskers(min, q1, median, q3, max, position = "bottom") {
   Object.defineProperty(window, "VisualCode", { value: API, writable: false, configurable: false });
   try { console.log("VisualCode loaded:", API.__version); } catch {}
 })();
+
 
 
