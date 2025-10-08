@@ -1,6 +1,6 @@
 /* VisualCode.js
    Class-based teaching UI library
-   Version: 4.4.2  (adds PlotBoxAndWhiskers(min,q1,median,q3,max, position="bottom"))
+   Version: 4.4.3  (adds PlotBoxAndWhiskers(min,q1,median,q3,max, position="bottom"))
    Exported global: VisualCode
 
    Highlights:
@@ -673,10 +673,11 @@ function PlotBoxAndWhiskers(min, q1, median, q3, max, position = "bottom") {
     MessageBox,
     // wiring
     RewireAll,
-    __version: "4.4.2"
+    __version: "4.4.3"
   });
 
   Object.defineProperty(window, "VisualCode", { value: API, writable: false, configurable: false });
   try { console.log("VisualCode loaded:", API.__version); } catch {}
 })();
+
 
