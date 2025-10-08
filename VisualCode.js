@@ -456,93 +456,107 @@
     return modes;
   }
 
-  // =======================
-  // Box & Whiskers (simple)
-  // =======================
-  // PlotBoxAndWhiskers(min, q1, median, q3, max, position="bottom")
-  // Renders an SVG box plot at the top or bottom of the page/app, with built-in validation.
-  function PlotBoxAndWhiskers(min, q1, median, q3, max, position = "bottom") {
-    const vals = [min, q1, median, q3, max].map(v => Number(v));
+// =======================
+// Box & Whiskers (simple) — labels for all five values
+// =======================
+// PlotBoxAndWhiskers(min, q1, median, q3, max, position="bottom")
+// Renders an SVG box plot at the top or bottom of the page/app, with built-in validation.
+function PlotBoxAndWhiskers(min, q1, median, q3, max, position = "bottom") {
+  const vals = [min, q1, median, q3, max].map(v => Number(v));
 
-    // Validation (student-friendly)
-    if (vals.some(v => !Number.isFinite(v))) {
-      MessageBox("Please enter numeric values for Min, Q1, Median, Q3, and Max.");
-      return null;
-    }
-    const [vmin, vq1, vmed, vq3, vmax] = vals;
-    if (!(vmin <= vq1 && vq1 <= vmed && vmed <= vq3 && vq3 <= vmax)) {
-      MessageBox("Values must satisfy: Min ≤ Q1 ≤ Median ≤ Q3 ≤ Max.");
-      return null;
-    }
-
-    const svgNS = "http://www.w3.org/2000/svg";
-    const width = 520, height = 160, pad = 50;
-    const parent = document.getElementById("app") || document.body;
-
-    // Create/choose container
-    const id = (position === "top") ? "vc-boxplot-top" : "vc-boxplot-bottom";
-    let host = document.getElementById(id);
-    if (!host) {
-      host = document.createElement("div");
-      host.id = id;
-      host.style.cssText = "width:100%;display:flex;justify-content:center;margin:12px 0;";
-      if (position === "top") parent.insertBefore(host, parent.firstChild);
-      else parent.appendChild(host);
-    }
-    host.innerHTML = "";
-
-    // SVG + scaling
-    const svg = document.createElementNS(svgNS, "svg");
-    svg.setAttribute("width", width);
-    svg.setAttribute("height", height);
-    host.appendChild(svg);
-
-    const y = height / 2 - 10;
-    const baselineY = y + 35;
-    const range = Math.max(1e-9, vmax - vmin);  // avoid divide-by-zero
-    const scaleX = (width - 2 * pad) / range;
-    const X = v => pad + (v - vmin) * scaleX;
-
-    // helpers
-    const line = (x1, y1, x2, y2, stroke="black", sw=1) => {
-      const l = document.createElementNS(svgNS, "line");
-      l.setAttribute("x1", x1); l.setAttribute("y1", y1);
-      l.setAttribute("x2", x2); l.setAttribute("y2", y2);
-      l.setAttribute("stroke", stroke); l.setAttribute("stroke-width", sw);
-      svg.appendChild(l);
-    };
-    const rect = (x, y0, w, h, fill="#cce5ff", stroke="black") => {
-      const r = document.createElementNS(svgNS, "rect");
-      r.setAttribute("x", x); r.setAttribute("y", y0);
-      r.setAttribute("width", Math.max(0, w)); r.setAttribute("height", h);
-      r.setAttribute("fill", fill); r.setAttribute("stroke", stroke);
-      svg.appendChild(r);
-    };
-    const text = (x, y0, t, size=10, anchor="middle") => {
-      const tx = document.createElementNS(svgNS, "text");
-      tx.setAttribute("x", x); tx.setAttribute("y", y0);
-      tx.setAttribute("text-anchor", anchor);
-      tx.setAttribute("font-size", size + "px");
-      tx.textContent = t;
-      svg.appendChild(tx);
-    };
-
-    // whisker line + caps
-    line(X(vmin), y, X(vmax), y);
-    line(X(vmin), y - 10, X(vmin), y + 10);
-    line(X(vmax), y - 10, X(vmax), y + 10);
-
-    // IQR box + median
-    rect(X(vq1), y - 18, X(vq3) - X(vq1), 36);
-    line(X(vmed), y - 18, X(vmed), y + 18, "black", 2);
-
-    // baseline + end labels
-    line(pad, baselineY, width - pad, baselineY);
-    text(X(vmin), baselineY + 18, String(vmin));
-    text(X(vmax), baselineY + 18, String(vmax));
-
-    return { host, svg };
+  // Validation (student-friendly)
+  if (vals.some(v => !Number.isFinite(v))) {
+    MessageBox("Please enter numeric values for Min, Q1, Median, Q3, and Max.");
+    return null;
   }
+  const [vmin, vq1, vmed, vq3, vmax] = vals;
+  if (!(vmin <= vq1 && vq1 <= vmed && vmed <= vq3 && vq3 <= vmax)) {
+    MessageBox("Values must satisfy: Min ≤ Q1 ≤ Median ≤ Q3 ≤ Max.");
+    return null;
+  }
+
+  const svgNS = "http://www.w3.org/2000/svg";
+  const width = 520, height = 170, pad = 50;
+  const parent = document.getElementById("app") || document.body;
+
+  // Create/choose container
+  const id = (position === "top") ? "vc-boxplot-top" : "vc-boxplot-bottom";
+  let host = document.getElementById(id);
+  if (!host) {
+    host = document.createElement("div");
+    host.id = id;
+    host.style.cssText = "width:100%;display:flex;justify-content:center;margin:12px 0;";
+    if (position === "top") parent.insertBefore(host, parent.firstChild);
+    else parent.appendChild(host);
+  }
+  host.innerHTML = "";
+
+  // SVG + scaling
+  const svg = document.createElementNS(svgNS, "svg");
+  svg.setAttribute("width", width);
+  svg.setAttribute("height", height);
+  host.appendChild(svg);
+
+  const y = height / 2 - 10;
+  const baselineY = y + 35;
+  const range = Math.max(1e-9, vmax - vmin);  // avoid divide-by-zero
+  const scaleX = (width - 2 * pad) / range;
+  const X = v => pad + (v - vmin) * scaleX;
+
+  // helpers
+  const line = (x1, y1, x2, y2, stroke="black", sw=1) => {
+    const l = document.createElementNS(svgNS, "line");
+    l.setAttribute("x1", x1); l.setAttribute("y1", y1);
+    l.setAttribute("x2", x2); l.setAttribute("y2", y2);
+    l.setAttribute("stroke", stroke); l.setAttribute("stroke-width", sw);
+    svg.appendChild(l);
+  };
+  const rect = (x, y0, w, h, fill="#cce5ff", stroke="black") => {
+    const r = document.createElementNS(svgNS, "rect");
+    r.setAttribute("x", x); r.setAttribute("y", y0);
+    r.setAttribute("width", Math.max(0, w)); r.setAttribute("height", h);
+    r.setAttribute("fill", fill); r.setAttribute("stroke", stroke);
+    svg.appendChild(r);
+  };
+  const text = (x, y0, t, size=10, anchor="middle", fontWeight="normal") => {
+    const tx = document.createElementNS(svgNS, "text");
+    tx.setAttribute("x", x); tx.setAttribute("y", y0);
+    tx.setAttribute("text-anchor", anchor);
+    tx.setAttribute("font-size", size + "px");
+    if (fontWeight !== "normal") tx.setAttribute("font-weight", fontWeight);
+    tx.textContent = t;
+    svg.appendChild(tx);
+  };
+
+  // whisker line + caps
+  line(X(vmin), y, X(vmax), y);
+  line(X(vmin), y - 10, X(vmin), y + 10);
+  line(X(vmax), y - 10, X(vmax), y + 10);
+
+  // IQR box + median
+  rect(X(vq1), y - 18, X(vq3) - X(vq1), 36);
+  line(X(vmed), y - 18, X(vmed), y + 18, "black", 2);
+
+  // baseline
+  line(pad, baselineY, width - pad, baselineY);
+
+  // Five labeled ticks along the number line
+  const labels = [
+    { x: X(vmin),  text: `Min=${vmin}` },
+    { x: X(vq1),   text: `Q1=${vq1}` },
+    { x: X(vmed),  text: `Median=${vmed}`, bold: true },
+    { x: X(vq3),   text: `Q3=${vq3}` },
+    { x: X(vmax),  text: `Max=${vmax}` }
+  ];
+  for (const { x, text: t, bold } of labels) {
+    // small tick
+    line(x, baselineY - 5, x, baselineY + 5);
+    // label under the tick
+    text(x, baselineY + 18, t, 10, "middle", bold ? "700" : "normal");
+  }
+
+  return { host, svg };
+}
 
   // =======================
   // UI MessageBox (modal) — no Clipboard API, selectable text
@@ -665,3 +679,4 @@
   Object.defineProperty(window, "VisualCode", { value: API, writable: false, configurable: false });
   try { console.log("VisualCode loaded:", API.__version); } catch {}
 })();
+
