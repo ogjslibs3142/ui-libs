@@ -1,6 +1,6 @@
 /* VisualCode.js
    Class-based teaching UI library
-   Version: 4.4.4  (adds PlotBoxAndWhiskers(min,q1,median,q3,max, position="bottom"))
+   Version: 4.4.5  (adds AnalyzeData(mean, range, mode, min, q1, median, q3, max))
    Exported global: VisualCode
 
    Highlights:
@@ -13,6 +13,7 @@
    - Auto-wiring by convention: define functions like id_event() or _id_event()
    - Helpers: SetPageTitle, SetPageColor, GetValue, SetValue, SetStyle, RewireAll
    - Math helpers (TI-84 style quartiles) + MessageBox() modal (selectable text)
+   - Box & Whiskers plot helper with labels for all five values
    - Auto-Flow — controls appear immediately on creation; later Layout organizes them
 */
 
@@ -456,107 +457,205 @@
     return modes;
   }
 
-// =======================
-// Box & Whiskers (simple) — labels for all five values
-// =======================
-// PlotBoxAndWhiskers(min, q1, median, q3, max, position="bottom")
-// Renders an SVG box plot at the top or bottom of the page/app, with built-in validation.
-function PlotBoxAndWhiskers(min, q1, median, q3, max, position = "bottom") {
-  const vals = [min, q1, median, q3, max].map(v => Number(v));
+  // =======================
+  // Box & Whiskers (simple) — labels for all five values
+  // =======================
+  // PlotBoxAndWhiskers(min, q1, median, q3, max, position="bottom")
+  // Renders an SVG box plot at the top or bottom of the page/app, with built-in validation.
+  function PlotBoxAndWhiskers(min, q1, median, q3, max, position = "bottom") {
+    const vals = [min, q1, median, q3, max].map(v => Number(v));
 
-  // Validation (student-friendly)
-  if (vals.some(v => !Number.isFinite(v))) {
-    MessageBox("Please enter numeric values for Min, Q1, Median, Q3, and Max.");
-    return null;
+    // Validation (student-friendly)
+    if (vals.some(v => !Number.isFinite(v))) {
+      MessageBox("Please enter numeric values for Min, Q1, Median, Q3, and Max.");
+      return null;
+    }
+    const [vmin, vq1, vmed, vq3, vmax] = vals;
+    if (!(vmin <= vq1 && vq1 <= vmed && vmed <= vq3 && vq3 <= vmax)) {
+      MessageBox("Values must satisfy: Min ≤ Q1 ≤ Median ≤ Q3 ≤ Max.");
+      return null;
+    }
+
+    const svgNS = "http://www.w3.org/2000/svg";
+    const width = 520, height = 170, pad = 50;
+    const parent = document.getElementById("app") || document.body;
+
+    // Create/choose container
+    const id = (position === "top") ? "vc-boxplot-top" : "vc-boxplot-bottom";
+    let host = document.getElementById(id);
+    if (!host) {
+      host = document.createElement("div");
+      host.id = id;
+      host.style.cssText = "width:100%;display:flex;justify-content:center;margin:12px 0;";
+      if (position === "top") parent.insertBefore(host, parent.firstChild);
+      else parent.appendChild(host);
+    }
+    host.innerHTML = "";
+
+    // SVG + scaling
+    const svg = document.createElementNS(svgNS, "svg");
+    svg.setAttribute("width", width);
+    svg.setAttribute("height", height);
+    host.appendChild(svg);
+
+    const y = height / 2 - 10;
+    const baselineY = y + 35;
+    const range = Math.max(1e-9, vmax - vmin);  // avoid divide-by-zero
+    const scaleX = (width - 2 * pad) / range;
+    const X = v => pad + (v - vmin) * scaleX;
+
+    // helpers
+    const line = (x1, y1, x2, y2, stroke="black", sw=1) => {
+      const l = document.createElementNS(svgNS, "line");
+      l.setAttribute("x1", x1); l.setAttribute("y1", y1);
+      l.setAttribute("x2", x2); l.setAttribute("y2", y2);
+      l.setAttribute("stroke", stroke); l.setAttribute("stroke-width", sw);
+      svg.appendChild(l);
+    };
+    const rect = (x, y0, w, h, fill="#cce5ff", stroke="black") => {
+      const r = document.createElementNS(svgNS, "rect");
+      r.setAttribute("x", x); r.setAttribute("y", y0);
+      r.setAttribute("width", Math.max(0, w)); r.setAttribute("height", h);
+      r.setAttribute("fill", fill); r.setAttribute("stroke", stroke);
+      svg.appendChild(r);
+    };
+    const text = (x, y0, t, size=10, anchor="middle", fontWeight="normal") => {
+      const tx = document.createElementNS(svgNS, "text");
+      tx.setAttribute("x", x); tx.setAttribute("y", y0);
+      tx.setAttribute("text-anchor", anchor);
+      tx.setAttribute("font-size", size + "px");
+      if (fontWeight !== "normal") tx.setAttribute("font-weight", fontWeight);
+      tx.textContent = t;
+      svg.appendChild(tx);
+    };
+
+    // whisker line + caps
+    line(X(vmin), y, X(vmax), y);
+    line(X(vmin), y - 10, X(vmin), y + 10);
+    line(X(vmax), y - 10, X(vmax), y + 10);
+
+    // IQR box + median
+    rect(X(vq1), y - 18, X(vq3) - X(vq1), 36);
+    line(X(vmed), y - 18, X(vmed), y + 18, "black", 2);
+
+    // baseline
+    line(pad, baselineY, width - pad, baselineY);
+
+    // Five labeled ticks along the number line
+    const labels = [
+      { x: X(vmin),  text: `Min=${vmin}` },
+      { x: X(vq1),   text: `Q1=${vq1}` },
+      { x: X(vmed),  text: `Med=${vmed}`, bold: true },
+      { x: X(vq3),   text: `Q3=${vq3}` },
+      { x: X(vmax),  text: `Max=${vmax}` }
+    ];
+    for (const { x, text: t, bold } of labels) {
+      // small tick
+      line(x, baselineY - 5, x, baselineY + 5);
+      // label under the tick
+      text(x, baselineY + 18, t, 10, "middle", bold ? "700" : "normal");
+    }
+
+    return { host, svg };
   }
-  const [vmin, vq1, vmed, vq3, vmax] = vals;
-  if (!(vmin <= vq1 && vq1 <= vmed && vmed <= vq3 && vq3 <= vmax)) {
-    MessageBox("Values must satisfy: Min ≤ Q1 ≤ Median ≤ Q3 ≤ Max.");
-    return null;
+
+  // =======================
+  // AnalyzeData (table-driven conclusions)
+  // =======================
+  // AnalyzeData(mean, range, mode, min, q1, median, q3, max)
+  // - mean, range, min, q1, median, q3, max are numbers (strings allowed)
+  // - mode can be "none", [] or an array of numbers / comma-separated string
+  // Returns an object with fields + a .text multiline summary for easy display.
+  function AnalyzeData(mean, range, mode, min, q1, median, q3, max) {
+    // normalize inputs
+    const M  = Number(mean);
+    const R  = Number(range);
+    const mn = Number(min);
+    const Q1 = Number(q1);
+    const Md = Number(median);
+    const Q3 = Number(q3);
+    const mx = Number(max);
+
+    // mode normalization
+    let modes = [];
+    if (Array.isArray(mode)) modes = mode;
+    else if (mode == null || String(mode).toLowerCase() === "none") modes = ["none"];
+    else {
+      const s = String(mode).trim();
+      if (s.toLowerCase() === "none" || s === "") modes = ["none"];
+      else modes = s.split(",").map(x => Number(x.trim())).filter(x => Number.isFinite(x));
+      if (!modes.length) modes = ["none"];
+    }
+
+    if (![M,R,mn,Q1,Md,Q3,mx].every(Number.isFinite)) {
+      return { error: "AnalyzeData: all numeric inputs must be provided.", text: "Invalid inputs." };
+    }
+
+    // derived
+    const IQR = Q3 - Q1;
+    const leftWhisker  = Q1 - mn;
+    const rightWhisker = mx - Q3;
+
+    // helper thresholds
+    const fullRange = Math.max(1e-9, mx - mn);
+    const eps = Math.max(1e-9, 0.05 * fullRange);   // “≈” tolerance: 5% of full range
+    const smallIQR = IQR < 0.5 * fullRange;         // small vs overall range
+    const largeIQR = IQR > 0.7 * fullRange;         // large vs overall range
+    const rangeSmall = R < IQR;                      // range smaller than IQR
+    const rangeLarge = R > 2 * IQR;                  // range much larger than IQR
+
+    // 1) Mean vs Median ⇒ symmetry / skew
+    let symmetry;
+    if (Math.abs(M - Md) <= eps) symmetry = "fairly symmetrical";
+    else if (M > Md) symmetry = "skewed right";
+    else symmetry = "skewed left";
+
+    // 2) Mode
+    const modeConclusion = (modes.length === 1 && modes[0] === "none")
+      ? "No mode (no value repeats)."
+      : `Most common value(s): ${modes.join(", ")}.`;
+
+    // 3) Range ⇒ narrow/wide
+    let rangeConclusion = `Range = ${R}. `;
+    rangeConclusion += rangeSmall ? "Overall spread is narrow."
+                     : rangeLarge ? "Overall spread is wide."
+                                  : "Overall spread is moderate.";
+
+    // 4) IQR ⇒ middle 50% consistent / varied
+    let iqrConclusion = `IQR = Q3 − Q1 = ${IQR}. `;
+    iqrConclusion += smallIQR ? "The middle 50% of the data is fairly consistent (close together)."
+                 : largeIQR ? "The middle 50% of the data is varied (spread out)."
+                            : "The middle 50% shows moderate spread.";
+
+    // 5) Median closer to Q1 or Q3
+    const dL = Math.abs(Md - Q1);
+    const dR = Math.abs(Q3 - Md);
+    let medianSide;
+    if (Math.abs(dL - dR) <= eps) medianSide = "The median is centered between Q1 and Q3.";
+    else if (dL < dR) medianSide = "The median is closer to Q1 → more data values lie on the higher side.";
+    else medianSide = "The median is closer to Q3 → more data values lie on the lower side.";
+
+    // 6) Whisker lengths ⇒ skew from whiskers
+    let whiskerSkew;
+    if (Math.abs(leftWhisker - rightWhisker) <= eps) whiskerSkew = "Whiskers are balanced (no strong skew).";
+    else if (leftWhisker > rightWhisker) whiskerSkew = "Left whisker (Q1 − Min) is longer → data is skewed left.";
+    else whiskerSkew = "Right whisker (Max − Q3) is longer → data is skewed right.";
+
+    const text =
+`• Mean vs Median: ${symmetry}.
+• Mode: ${modeConclusion}
+• ${rangeConclusion}
+• ${iqrConclusion}
+• ${medianSide}
+• ${whiskerSkew}`;
+
+    return {
+      mean: M, range: R, mode: modes, min: mn, q1: Q1, median: Md, q3: Q3, max: mx,
+      IQR, leftWhisker, rightWhisker,
+      symmetry, modeConclusion, rangeConclusion, iqrConclusion, medianSide, whiskerSkew,
+      text
+    };
   }
-
-  const svgNS = "http://www.w3.org/2000/svg";
-  const width = 520, height = 170, pad = 50;
-  const parent = document.getElementById("app") || document.body;
-
-  // Create/choose container
-  const id = (position === "top") ? "vc-boxplot-top" : "vc-boxplot-bottom";
-  let host = document.getElementById(id);
-  if (!host) {
-    host = document.createElement("div");
-    host.id = id;
-    host.style.cssText = "width:100%;display:flex;justify-content:center;margin:12px 0;";
-    if (position === "top") parent.insertBefore(host, parent.firstChild);
-    else parent.appendChild(host);
-  }
-  host.innerHTML = "";
-
-  // SVG + scaling
-  const svg = document.createElementNS(svgNS, "svg");
-  svg.setAttribute("width", width);
-  svg.setAttribute("height", height);
-  host.appendChild(svg);
-
-  const y = height / 2 - 10;
-  const baselineY = y + 35;
-  const range = Math.max(1e-9, vmax - vmin);  // avoid divide-by-zero
-  const scaleX = (width - 2 * pad) / range;
-  const X = v => pad + (v - vmin) * scaleX;
-
-  // helpers
-  const line = (x1, y1, x2, y2, stroke="black", sw=1) => {
-    const l = document.createElementNS(svgNS, "line");
-    l.setAttribute("x1", x1); l.setAttribute("y1", y1);
-    l.setAttribute("x2", x2); l.setAttribute("y2", y2);
-    l.setAttribute("stroke", stroke); l.setAttribute("stroke-width", sw);
-    svg.appendChild(l);
-  };
-  const rect = (x, y0, w, h, fill="#cce5ff", stroke="black") => {
-    const r = document.createElementNS(svgNS, "rect");
-    r.setAttribute("x", x); r.setAttribute("y", y0);
-    r.setAttribute("width", Math.max(0, w)); r.setAttribute("height", h);
-    r.setAttribute("fill", fill); r.setAttribute("stroke", stroke);
-    svg.appendChild(r);
-  };
-  const text = (x, y0, t, size=10, anchor="middle", fontWeight="normal") => {
-    const tx = document.createElementNS(svgNS, "text");
-    tx.setAttribute("x", x); tx.setAttribute("y", y0);
-    tx.setAttribute("text-anchor", anchor);
-    tx.setAttribute("font-size", size + "px");
-    if (fontWeight !== "normal") tx.setAttribute("font-weight", fontWeight);
-    tx.textContent = t;
-    svg.appendChild(tx);
-  };
-
-  // whisker line + caps
-  line(X(vmin), y, X(vmax), y);
-  line(X(vmin), y - 10, X(vmin), y + 10);
-  line(X(vmax), y - 10, X(vmax), y + 10);
-
-  // IQR box + median
-  rect(X(vq1), y - 18, X(vq3) - X(vq1), 36);
-  line(X(vmed), y - 18, X(vmed), y + 18, "black", 2);
-
-  // baseline
-  line(pad, baselineY, width - pad, baselineY);
-
-  // Five labeled ticks along the number line
-  const labels = [
-    { x: X(vmin),  text: `Min=${vmin}` },
-    { x: X(vq1),   text: `Q1=${vq1}` },
-    { x: X(vmed),  text: `Med=${vmed}`, bold: true },
-    { x: X(vq3),   text: `Q3=${vq3}` },
-    { x: X(vmax),  text: `Max=${vmax}` }
-  ];
-  for (const { x, text: t, bold } of labels) {
-    // small tick
-    line(x, baselineY - 5, x, baselineY + 5);
-    // label under the tick
-    text(x, baselineY + 18, t, 10, "middle", bold ? "700" : "normal");
-  }
-
-  return { host, svg };
-}
 
   // =======================
   // UI MessageBox (modal) — no Clipboard API, selectable text
@@ -667,18 +766,20 @@ function PlotBoxAndWhiskers(min, q1, median, q3, max, position = "bottom") {
     SetAutoFlow, SetAutoFlowRoot,
     // math
     FindMean, FindRange, FindMinimum, FindQ1, FindMedian, FindQ3, FindMaximum, FindMode,
+    AnalyzeData,
     // charts
     PlotBoxAndWhiskers,
     // UI
     MessageBox,
     // wiring
     RewireAll,
-    __version: "4.4.4"
+    __version: "4.4.5"
   });
 
   Object.defineProperty(window, "VisualCode", { value: API, writable: false, configurable: false });
   try { console.log("VisualCode loaded:", API.__version); } catch {}
 })();
+
 
 
 
