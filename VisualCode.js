@@ -559,89 +559,83 @@
     return { host, svg };
   }
 
-  // =======================
-  // AnalyzeData (table-driven conclusions)
-  // =======================
-  // AnalyzeData(mean, range, mode, min, q1, median, q3, max)
-  // - mean, range, min, q1, median, q3, max are numbers (strings allowed)
-  // - mode can be "none", [] or an array of numbers / comma-separated string
-  // Returns an object with fields + a .text multiline summary for easy display.
-  function AnalyzeData(mean, range, mode, min, q1, median, q3, max) {
-    // normalize inputs
-    const M  = Number(mean);
-    const R  = Number(range);
-    const mn = Number(min);
-    const Q1 = Number(q1);
-    const Md = Number(median);
-    const Q3 = Number(q3);
-    const mx = Number(max);
+// =======================
+// AnalyzeData (summary + conclusions)
+// =======================
+// AnalyzeData(mean, range, mode, min, q1, median, q3, max)
+// Returns an object with stats + interpretations + .text (conclusions only)
+// and .report (stats + conclusions, ready for display).
+function AnalyzeData(mean, range, mode, min, q1, median, q3, max) {
+  // normalize inputs
+  const M  = Number(mean);
+  const R  = Number(range);
+  const mn = Number(min);
+  const Q1 = Number(q1);
+  const Md = Number(median);
+  const Q3 = Number(q3);
+  const mx = Number(max);
 
-    // mode normalization
-    let modes = [];
-    if (Array.isArray(mode)) modes = mode;
-    else if (mode == null || String(mode).toLowerCase() === "none") modes = ["none"];
-    else {
-      const s = String(mode).trim();
-      if (s.toLowerCase() === "none" || s === "") modes = ["none"];
-      else modes = s.split(",").map(x => Number(x.trim())).filter(x => Number.isFinite(x));
-      if (!modes.length) modes = ["none"];
-    }
+  // normalize mode
+  let modes = [];
+  if (Array.isArray(mode)) modes = mode;
+  else if (mode == null || String(mode).toLowerCase() === "none") modes = ["none"];
+  else {
+    const s = String(mode).trim();
+    if (s.toLowerCase() === "none" || s === "") modes = ["none"];
+    else modes = s.split(",").map(x => Number(x.trim())).filter(x => Number.isFinite(x));
+    if (!modes.length) modes = ["none"];
+  }
 
-    if (![M,R,mn,Q1,Md,Q3,mx].every(Number.isFinite)) {
-      return { error: "AnalyzeData: all numeric inputs must be provided.", text: "Invalid inputs." };
-    }
+  // guard
+  if (![M,R,mn,Q1,Md,Q3,mx].every(Number.isFinite)) {
+    return { error: "AnalyzeData: numeric inputs required.", text: "Invalid inputs.", report: "Invalid inputs." };
+  }
 
-    // derived
-    const IQR = Q3 - Q1;
-    const leftWhisker  = Q1 - mn;
-    const rightWhisker = mx - Q3;
+  // derived
+  const IQR = Q3 - Q1;
+  const leftWhisker  = Q1 - mn;
+  const rightWhisker = mx - Q3;
 
-    // helper thresholds
-    const fullRange = Math.max(1e-9, mx - mn);
-    const eps = Math.max(1e-9, 0.05 * fullRange);   // “≈” tolerance: 5% of full range
-    const smallIQR = IQR < 0.5 * fullRange;         // small vs overall range
-    const largeIQR = IQR > 0.7 * fullRange;         // large vs overall range
-    const rangeSmall = R < IQR;                      // range smaller than IQR
-    const rangeLarge = R > 2 * IQR;                  // range much larger than IQR
+  const eps = Math.max(1e-9, 0.05 * (mx - mn));
 
-    // 1) Mean vs Median ⇒ symmetry / skew
-    let symmetry;
-    if (Math.abs(M - Md) <= eps) symmetry = "fairly symmetrical";
-    else if (M > Md) symmetry = "skewed right";
-    else symmetry = "skewed left";
+  // 1) Mean vs Median
+  let symmetry;
+  if (Math.abs(M - Md) <= eps) symmetry = "fairly symmetrical";
+  else if (M > Md) symmetry = "skewed right";
+  else symmetry = "skewed left";
 
-    // 2) Mode
-    const modeConclusion = (modes.length === 1 && modes[0] === "none")
-      ? "No mode (no value repeats)."
-      : `Most common value(s): ${modes.join(", ")}.`;
+  // 2) Mode
+  const modeConclusion = (modes.length === 1 && modes[0] === "none")
+    ? "No mode (no value repeats)."
+    : `Most common value(s): ${modes.join(", ")}.`;
 
-    // 3) Range ⇒ narrow/wide
-    let rangeConclusion = `Range = ${R}. `;
-    rangeConclusion += rangeSmall ? "Overall spread is narrow."
-                     : rangeLarge ? "Overall spread is wide."
-                                  : "Overall spread is moderate.";
+  // 3) Range
+  let rangeConclusion = `Range = ${R}. `;
+  rangeConclusion += R < IQR ? "Overall spread is narrow."
+                   : R > 2 * IQR ? "Overall spread is wide."
+                   : "Overall spread is moderate.";
 
-    // 4) IQR ⇒ middle 50% consistent / varied
-    let iqrConclusion = `IQR = Q3 − Q1 = ${IQR}. `;
-    iqrConclusion += smallIQR ? "The middle 50% of the data is fairly consistent (close together)."
-                 : largeIQR ? "The middle 50% of the data is varied (spread out)."
-                            : "The middle 50% shows moderate spread.";
+  // 4) IQR
+  let iqrConclusion = `IQR = ${IQR}. `;
+  iqrConclusion += IQR < 0.5*(mx-mn) ? "Middle 50% is fairly consistent."
+                 : IQR > 0.7*(mx-mn) ? "Middle 50% is varied (spread out)."
+                 : "Middle 50% shows moderate spread.";
 
-    // 5) Median closer to Q1 or Q3
-    const dL = Math.abs(Md - Q1);
-    const dR = Math.abs(Q3 - Md);
-    let medianSide;
-    if (Math.abs(dL - dR) <= eps) medianSide = "The median is centered between Q1 and Q3.";
-    else if (dL < dR) medianSide = "The median is closer to Q1 → more data values lie on the higher side.";
-    else medianSide = "The median is closer to Q3 → more data values lie on the lower side.";
+  // 5) Median closer to Q1 or Q3
+  const dL = Math.abs(Md - Q1);
+  const dR = Math.abs(Q3 - Md);
+  let medianSide;
+  if (Math.abs(dL - dR) <= eps) medianSide = "Median is centered between Q1 and Q3.";
+  else if (dL < dR) medianSide = "Median is closer to Q1 → more data on the higher side.";
+  else medianSide = "Median is closer to Q3 → more data on the lower side.";
 
-    // 6) Whisker lengths ⇒ skew from whiskers
-    let whiskerSkew;
-    if (Math.abs(leftWhisker - rightWhisker) <= eps) whiskerSkew = "Whiskers are balanced (no strong skew).";
-    else if (leftWhisker > rightWhisker) whiskerSkew = "Left whisker (Q1 − Min) is longer → data is skewed left.";
-    else whiskerSkew = "Right whisker (Max − Q3) is longer → data is skewed right.";
+  // 6) Whisker lengths
+  let whiskerSkew;
+  if (Math.abs(leftWhisker - rightWhisker) <= eps) whiskerSkew = "Whiskers are balanced (no strong skew).";
+  else if (leftWhisker > rightWhisker) whiskerSkew = "Left whisker longer → skewed left.";
+  else whiskerSkew = "Right whisker longer → skewed right.";
 
-    const text =
+  const text =
 `• Mean vs Median: ${symmetry}.
 • Mode: ${modeConclusion}
 • ${rangeConclusion}
@@ -649,14 +643,31 @@
 • ${medianSide}
 • ${whiskerSkew}`;
 
-    return {
-      mean: M, range: R, mode: modes, min: mn, q1: Q1, median: Md, q3: Q3, max: mx,
-      IQR, leftWhisker, rightWhisker,
-      symmetry, modeConclusion, rangeConclusion, iqrConclusion, medianSide, whiskerSkew,
-      text
-    };
-  }
+  // Pre-formatted report string with stats + analysis
+  const report =
+`Mean = ${M}
+Range = ${R}
+Mode  = ${(Array.isArray(modes) ? modes.join(", ") : String(modes))}
+Min   = ${mn}
+Q1    = ${Q1}
+Median= ${Md}
+Q3    = ${Q3}
+Max   = ${mx}
 
+Analysis:
+${text}`;
+
+  return {
+    mean: M, range: R, mode: modes, min: mn, q1: Q1, median: Md, q3: Q3, max: mx,
+    IQR, leftWhisker, rightWhisker,
+    symmetry, modeConclusion, rangeConclusion, iqrConclusion, medianSide, whiskerSkew,
+    text,   // conclusions only
+    report  // stats + conclusions (ready to display)
+  };
+}
+
+
+   
   // =======================
   // UI MessageBox (modal) — no Clipboard API, selectable text
   // =======================
@@ -779,6 +790,7 @@
   Object.defineProperty(window, "VisualCode", { value: API, writable: false, configurable: false });
   try { console.log("VisualCode loaded:", API.__version); } catch {}
 })();
+
 
 
 
