@@ -1,6 +1,6 @@
 /* VisualCode.js
    Class-based teaching UI library
-   Version: 4.4.5  (adds AnalyzeData(mean, range, mode, min, q1, median, q3, max))
+   Version: 4.4.6  (adds FindStandardDeviation() w/ 4-step MessageBox)
    Exported global: VisualCode
 
    Highlights:
@@ -14,6 +14,7 @@
    - Helpers: SetPageTitle, SetPageColor, GetValue, SetValue, SetStyle, RewireAll
    - Math helpers (TI-84 style quartiles) + MessageBox() modal (selectable text)
    - Box & Whiskers plot helper with labels for all five values
+   - AnalyzeData(mean, range, mode, min, q1, median, q3, max) → conclusions + report
    - Auto-Flow — controls appear immediately on creation; later Layout organizes them
 */
 
@@ -54,7 +55,6 @@
       if (!this.currentLine) {
         const row = document.createElement("div");
         row.setAttribute("style", styles.line);
-        // Make each row take full width within the host
         row.style.width = "100%";
         this.root.appendChild(row);
         this.currentLine = row;
@@ -78,6 +78,7 @@
   }
   function supportsEvent(el, evtName) { return ("on" + evtName) in el; }
   function escapeRegexLiteral(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+  const round = (x, d = 2) => Number.isFinite(x) ? Number(x.toFixed(d)) : x;
 
   // --- Auto-Flow (show controls as they’re created) ---
   const __flow = {
@@ -457,11 +458,55 @@
     return modes;
   }
 
+  // ---- NEW: Population Standard Deviation with 4-step MessageBox ----
+  // Returns the numeric SD; also shows a step-by-step MessageBox.
+  function FindStandardDeviation(str) {
+    const nums = __vc_parseNumberList(str);
+    if (!nums.length) { MessageBox("Please enter at least one number."); return null; }
+
+    // Step 1: mean
+    const n = nums.length;
+    const sum = nums.reduce((a,b)=>a+b,0);
+    const mean = sum / n;
+
+    // Step 2: squared deviations
+    const sqDevs = nums.map(x => (x - mean) ** 2);
+
+    // Step 3: mean of squared deviations (population variance)
+    const varSum = sqDevs.reduce((a,b)=>a+b,0);
+    const variance = varSum / n;
+
+    // Step 4: square root
+    const sd = Math.sqrt(variance);
+
+    // Build friendly message
+    const numsLine = nums.join(" + ");
+    const sqStr = sqDevs.map(v => round(v, 0) === v ? String(v) : v.toFixed(2)).join(", ");
+    const msg =
+`Step 1. Work out the mean
+${numsLine}
+${"—".repeat(Math.min(60, Math.max(20, numsLine.length)))}
+${n}
+
+= ${round(sum,2)} / ${n} = ${round(mean,2)}
+
+Step 2. For each value, subtract the mean and square the result
+( x − ${round(mean,2)} )²  →  ${sqStr}
+
+Step 3. Find the mean of all the numbers from Step 2
+(${round(varSum,2)} ÷ ${n}) = ${round(variance,2)}
+
+Step 4. Calculate the square root of the result from Step 3
+Standard Deviation = SQRT(${round(variance,2)}) = ${round(sd,2)}`;
+
+    MessageBox(msg, { title: "Standard Deviation (Population)", selectAllOnOpen: true });
+    return sd;
+  }
+
   // =======================
   // Box & Whiskers (simple) — labels for all five values
   // =======================
   // PlotBoxAndWhiskers(min, q1, median, q3, max, position="bottom")
-  // Renders an SVG box plot at the top or bottom of the page/app, with built-in validation.
   function PlotBoxAndWhiskers(min, q1, median, q3, max, position = "bottom") {
     const vals = [min, q1, median, q3, max].map(v => Number(v));
 
@@ -559,83 +604,80 @@
     return { host, svg };
   }
 
-// =======================
-// AnalyzeData (summary + conclusions)
-// =======================
-// AnalyzeData(mean, range, mode, min, q1, median, q3, max)
-// Returns an object with stats + interpretations + .text (conclusions only)
-// and .report (stats + conclusions, ready for display).
-function AnalyzeData(mean, range, mode, min, q1, median, q3, max) {
-  // normalize inputs
-  const M  = Number(mean);
-  const R  = Number(range);
-  const mn = Number(min);
-  const Q1 = Number(q1);
-  const Md = Number(median);
-  const Q3 = Number(q3);
-  const mx = Number(max);
+  // =======================
+  // AnalyzeData (summary + conclusions)
+  // =======================
+  function AnalyzeData(mean, range, mode, min, q1, median, q3, max) {
+    // normalize inputs
+    const M  = Number(mean);
+    const R  = Number(range);
+    const mn = Number(min);
+    const Q1 = Number(q1);
+    const Md = Number(median);
+    const Q3 = Number(q3);
+    const mx = Number(max);
 
-  // normalize mode
-  let modes = [];
-  if (Array.isArray(mode)) modes = mode;
-  else if (mode == null || String(mode).toLowerCase() === "none") modes = ["none"];
-  else {
-    const s = String(mode).trim();
-    if (s.toLowerCase() === "none" || s === "") modes = ["none"];
-    else modes = s.split(",").map(x => Number(x.trim())).filter(x => Number.isFinite(x));
-    if (!modes.length) modes = ["none"];
-  }
+    // normalize mode
+    let modes = [];
+    if (Array.isArray(mode)) modes = mode;
+    else if (mode == null || String(mode).toLowerCase() === "none") modes = ["none"];
+    else {
+      const s = String(mode).trim();
+      if (s.toLowerCase() === "none" || s === "") modes = ["none"];
+      else modes = s.split(",").map(x => Number(x.trim())).filter(x => Number.isFinite(x));
+      if (!modes.length) modes = ["none"];
+    }
 
-  // guard
-  if (![M,R,mn,Q1,Md,Q3,mx].every(Number.isFinite)) {
-    return { error: "AnalyzeData: numeric inputs required.", text: "Invalid inputs.", report: "Invalid inputs." };
-  }
+    // guard
+    if (![M,R,mn,Q1,Md,Q3,mx].every(Number.isFinite)) {
+      return { error: "AnalyzeData: numeric inputs required.", text: "Invalid inputs.", report: "Invalid inputs." };
+    }
 
-  // derived
-  const IQR = Q3 - Q1;
-  const leftWhisker  = Q1 - mn;
-  const rightWhisker = mx - Q3;
+    // derived
+    const IQR = Q3 - Q1;
+    const leftWhisker  = Q1 - mn;
+    const rightWhisker = mx - Q3;
 
-  const eps = Math.max(1e-9, 0.05 * (mx - mn));
+    const eps = Math.max(1e-9, 0.05 * (mx - mn));
 
-  // 1) Mean vs Median
-  let symmetry;
-  if (Math.abs(M - Md) <= eps) symmetry = "fairly symmetrical";
-  else if (M > Md) symmetry = "skewed right";
-  else symmetry = "skewed left";
+    // 1) Mean vs Median
+    let symmetry;
+    if (Math.abs(M - Md) <= eps) symmetry = "fairly symmetrical";
+    else if (M > Md) symmetry = "skewed right";
+    else symmetry = "skewed left";
 
-  // 2) Mode
-  const modeConclusion = (modes.length === 1 && modes[0] === "none")
-    ? "No mode (no value repeats)."
-    : `Most common value(s): ${modes.join(", ")}.`;
+    // 2) Mode
+    const modeConclusion = (modes.length === 1 && modes[0] === "none")
+      ? "No mode (no value repeats)."
+      : `Most common value(s): ${modes.join(", ")}.`;
 
-  // 3) Range
-  let rangeConclusion = `Range = ${R}. `;
-  rangeConclusion += R < IQR ? "Overall spread is narrow."
-                   : R > 2 * IQR ? "Overall spread is wide."
-                   : "Overall spread is moderate.";
+    // 3) Range
+    let rangeConclusion = `Range = ${R}. `;
+    rangeConclusion += R < IQR ? "Overall spread is narrow."
+                     : R > 2 * IQR ? "Overall spread is wide."
+                     : "Overall spread is moderate.";
 
-  // 4) IQR
-  let iqrConclusion = `IQR = ${IQR}. `;
-  iqrConclusion += IQR < 0.5*(mx-mn) ? "Middle 50% is fairly consistent."
-                 : IQR > 0.7*(mx-mn) ? "Middle 50% is varied (spread out)."
-                 : "Middle 50% shows moderate spread.";
+    // 4) IQR
+    let iqrConclusion = `IQR = ${IQR}. `;
+    iqrConclusion += IQR < 0.5*(mx-mn) ? "Middle 50% is fairly consistent."
+                   : IQR > 0.7*(mx-mn) ? "Middle 50% is varied (spread out)."
+                   : "Middle 50% shows moderate spread.";
 
-  // 5) Median closer to Q1 or Q3
-  const dL = Math.abs(Md - Q1);
-  const dR = Math.abs(Q3 - Md);
-  let medianSide;
-  if (Math.abs(dL - dR) <= eps) medianSide = "Median is centered between Q1 and Q3.";
-  else if (dL < dR) medianSide = "Median is closer to Q1 → more data on the higher side.";
-  else medianSide = "Median is closer to Q3 → more data on the lower side.";
+    // 5) Median closer to Q1 or Q3
+    const dL = Math.abs(Md - Q1);
+    const dR = Math.abs(Q3 - Md);
+    let medianSide;
+    if (Math.abs(dL - dR) <= eps) medianSide = "Median is centered between Q1 and Q3.";
+    else if (dL < dR) medianSide = "Median is closer to Q1 → more data on the higher side.";
+    else medianSide = "Median is closer to Q3 → more data on the lower side.";
 
-  // 6) Whisker lengths
-  let whiskerSkew;
-  if (Math.abs(leftWhisker - rightWhisker) <= eps) whiskerSkew = "Whiskers are balanced (no strong skew).";
-  else if (leftWhisker > rightWhisker) whiskerSkew = "Left whisker longer → skewed left.";
-  else whiskerSkew = "Right whisker longer → skewed right.";
+    // 6) Whisker lengths
+    let whiskerSkew;
+    if (Math.abs(leftWhisker - rightWhisker) <= eps) whiskerSkew = "Whiskers are balanced (no strong skew).";
+    else if (leftWhisker > rightWhisker) whiskerSkew = "Left whisker longer → skewed left.";
+    else whiskerSkew = "Right whisker longer → skewed right.";
 
-  const text =
+    const text =
 `• Mean vs Median: ${symmetry}.
 • Mode: ${modeConclusion}
 • ${rangeConclusion}
@@ -643,8 +685,8 @@ function AnalyzeData(mean, range, mode, min, q1, median, q3, max) {
 • ${medianSide}
 • ${whiskerSkew}`;
 
-  // Pre-formatted report string with stats + analysis
-  const report =
+    // Pre-formatted report string with stats + analysis
+    const report =
 `Mean = ${M}
 Range = ${R}
 Mode  = ${(Array.isArray(modes) ? modes.join(", ") : String(modes))}
@@ -657,29 +699,24 @@ Max   = ${mx}
 Analysis:
 ${text}`;
 
-  return {
-    mean: M, range: R, mode: modes, min: mn, q1: Q1, median: Md, q3: Q3, max: mx,
-    IQR, leftWhisker, rightWhisker,
-    symmetry, modeConclusion, rangeConclusion, iqrConclusion, medianSide, whiskerSkew,
-    text,   // conclusions only
-    report  // stats + conclusions (ready to display)
-  };
-}
+    return {
+      mean: M, range: R, mode: modes, min: mn, q1: Q1, median: Md, q3: Q3, max: mx,
+      IQR, leftWhisker, rightWhisker,
+      symmetry, modeConclusion, rangeConclusion, iqrConclusion, medianSide, whiskerSkew,
+      text,   // conclusions only
+      report  // stats + conclusions (ready to display)
+    };
+  }
 
-
-   
   // =======================
   // UI MessageBox (modal) — no Clipboard API, selectable text
   // =======================
-  // Usage:
-  // v.MessageBox("Hello!");
-  // v.MessageBox("Copy with Ctrl/Cmd+C", { title:"Info", okText:"Close", selectAllOnOpen:true });
   function MessageBox(message, options = {}) {
     const {
       title = "Message",
       okText = "OK",
-      selectAllOnOpen = false, // if true, selects the message text on open
-      closeOnOverlay = true    // click outside to close
+      selectAllOnOpen = false,
+      closeOnOverlay = true
     } = options;
 
     // Overlay
@@ -777,6 +814,7 @@ ${text}`;
     SetAutoFlow, SetAutoFlowRoot,
     // math
     FindMean, FindRange, FindMinimum, FindQ1, FindMedian, FindQ3, FindMaximum, FindMode,
+    FindStandardDeviation,   // NEW
     AnalyzeData,
     // charts
     PlotBoxAndWhiskers,
@@ -784,15 +822,9 @@ ${text}`;
     MessageBox,
     // wiring
     RewireAll,
-    __version: "4.4.5"
+    __version: "4.4.6"
   });
 
   Object.defineProperty(window, "VisualCode", { value: API, writable: false, configurable: false });
   try { console.log("VisualCode loaded:", API.__version); } catch {}
 })();
-
-
-
-
-
-
