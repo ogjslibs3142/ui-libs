@@ -711,73 +711,100 @@ ${text}`;
   // =======================
   // UI MessageBox (modal) — no Clipboard API, selectable text
   // =======================
-  function MessageBox(message, options = {}) {
-    const {
-      title = "Message",
-      okText = "OK",
-      selectAllOnOpen = false,
-      closeOnOverlay = true
-    } = options;
+  // ==== Modal Message Box (scrollable) ====
+// Usage (backward-compatible):
+//   VisualCode.MessageBox("Your text here");
+// Optional sizing:
+//   VisualCode.MessageBox(longText, { width: "900px", maxHeight: "75vh", title: "Details" });
+function MessageBox(text, opts = {}) {
+  const width = opts.width || "min(800px, 90vw)";
+  const maxH  = opts.maxHeight || "70vh";
+  const title = opts.title || "";
 
-    // Overlay
-    const overlay = document.createElement("div");
-    overlay.style.cssText = `
-      position:fixed; inset:0; background:rgba(0,0,0,0.38);
-      display:flex; align-items:center; justify-content:center; z-index:9999;
-    `;
+  // overlay
+  const overlay = document.createElement("div");
+  Object.assign(overlay.style, {
+    position: "fixed", inset: "0", background: "rgba(0,0,0,0.35)",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    zIndex: 999999
+  });
 
-    // Dialog
-    const dlg = document.createElement("div");
-    dlg.setAttribute("role", "dialog");
-    dlg.setAttribute("aria-modal", "true");
-    dlg.style.cssText = `
-      background:#fff; color:#111; max-width:min(90vw, 520px);
-      width:min(90vw, 520px); border-radius:14px; box-shadow:0 20px 60px rgba(0,0,0,.25);
-      padding:16px 16px 12px; font:14px system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-    `;
+  // dialog shell
+  const box = document.createElement("div");
+  Object.assign(box.style, {
+    width, maxWidth: "95vw",
+    background: "white", borderRadius: "12px",
+    boxShadow: "0 10px 30px rgba(0,0,0,.25)",
+    display: "flex", flexDirection: "column",
+    overflow: "hidden"
+  });
 
-    const h = document.createElement("div");
-    h.textContent = title;
-    h.style.cssText = `font-weight:700; font-size:16px; margin-bottom:8px;`;
+  // header (optional title + close)
+  const header = document.createElement("div");
+  Object.assign(header.style, {
+    display: "flex", alignItems: "center", justifyContent: "space-between",
+    padding: "12px 16px", borderBottom: "1px solid #eee",
+    background: "#fafafa", fontWeight: 600
+  });
+  const titleEl = document.createElement("div");
+  titleEl.textContent = title;
+  const closeBtn = document.createElement("button");
+  closeBtn.type = "button";
+  closeBtn.textContent = "×";
+  Object.assign(closeBtn.style, {
+    fontSize: "20px", lineHeight: "20px", width: "32px", height: "32px",
+    border: "none", background: "transparent", cursor: "pointer"
+  });
+  closeBtn.addEventListener("click", close);
 
-    const msg = document.createElement("div");
-    msg.textContent = String(message ?? "");
-    msg.style.cssText = `
-      white-space: pre-wrap; user-select:text; -webkit-user-select:text;
-      line-height:1.4; margin:6px 0 12px;
-    `;
+  // content (scrollable)
+  const content = document.createElement("div");
+  Object.assign(content.style, {
+    padding: "16px 18px",
+    maxHeight: maxH,
+    overflowY: "auto",
+    whiteSpace: "pre-wrap",
+    wordWrap: "break-word",
+    lineHeight: "1.4",
+    fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Liberation Sans', sans-serif"
+  });
+  // Keep selection/copy simple; preserve newlines/spaces
+  content.textContent = (text == null ? "" : String(text));
 
-    const bar = document.createElement("div");
-    bar.style.cssText = `display:flex; justify-content:flex-end; gap:8px;`;
+  // footer (Close)
+  const footer = document.createElement("div");
+  Object.assign(footer.style, {
+    padding: "12px 16px", borderTop: "1px solid #eee", background: "#fafafa",
+    display: "flex", justifyContent: "flex-end", gap: "8px"
+  });
+  const ok = document.createElement("button");
+  ok.type = "button";
+  ok.textContent = "Close";
+  Object.assign(ok.style, {
+    padding: "8px 14px", borderRadius: "8px",
+    border: "1px solid #ccc", background: "#f5f5f5", cursor: "pointer"
+  });
+  ok.addEventListener("click", close);
 
-    const btnOk = document.createElement("button");
-    btnOk.type = "button";
-    btnOk.textContent = okText;
-    btnOk.style.cssText = `
-      padding:8px 14px; border-radius:10px; border:1px solid #0a7;
-      background:#0a7; color:#fff; cursor:pointer;
-    `;
+  // assemble
+  if (title) header.appendChild(titleEl);
+  header.appendChild(closeBtn);
+  footer.appendChild(ok);
+  box.appendChild(header);
+  box.appendChild(content);
+  box.appendChild(footer);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
 
-    bar.appendChild(btnOk);
-    dlg.appendChild(h);
-    dlg.appendChild(msg);
-    dlg.appendChild(bar);
-    overlay.appendChild(dlg);
-    document.body.appendChild(overlay);
-
-    const prev = document.activeElement;
-    setTimeout(() => {
-      btnOk.focus();
-      if (selectAllOnOpen) {
-        try {
-          const r = document.createRange();
-          r.selectNodeContents(msg);
-          const sel = window.getSelection();
-          sel.removeAllRanges();
-          sel.addRange(r);
-        } catch {}
-      }
-    }, 0);
+  // close behaviors
+  function close() {
+    window.removeEventListener("keydown", onKey);
+    if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+  }
+  function onKey(e) { if (e.key === "Escape") close(); }
+  window.addEventListener("keydown", onKey);
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
+}
 
     function cleanup() {
       if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
@@ -828,3 +855,4 @@ ${text}`;
   Object.defineProperty(window, "VisualCode", { value: API, writable: false, configurable: false });
   try { console.log("VisualCode loaded:", API.__version); } catch {}
 })();
+
