@@ -392,21 +392,17 @@
     const numsLine = nums.join(" + ");
     const sep = "—".repeat(Math.min(60, Math.max(20, numsLine.length)));
     const msg =
-`Step 1. Work out the mean
-${numsLine}
-${sep}
-${n}
-
-= ${round(sum,2)} / ${n} = ${round(mean,2)}
+`Step 1. Mean = (${nums.join(" + ")}) / ${n} = ${round(mean, 2)}
 
 Step 2. For each value, subtract the mean and square the result
 ${details}
 
 Step 3. Find the mean of all the numbers from Step 2
-(${round(varSum,2)} ÷ ${n}) = ${round(variance,2)}
+(${round(varSum, 2)} ÷ ${n}) = ${round(variance, 2)}
 
 Step 4. Calculate the square root of the result from Step 3
-Standard Deviation = SQRT(${round(variance,2)}) = ${round(sd,2)}`;
+Standard Deviation = SQRT(${round(variance, 2)}) = ${round(sd, 2)}`;
+
 
     MessageBox(msg, { title: "Standard Deviation (Population)", selectAllOnOpen: true });
     return sd;
@@ -743,3 +739,4 @@ ${text}`;
   Object.defineProperty(window, "VisualCode", { value: API, writable: false, configurable: false });
   try { console.log("VisualCode loaded:", API.__version); } catch {}
 })();
+
