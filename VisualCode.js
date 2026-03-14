@@ -734,7 +734,7 @@ ${text}`;
     MessageBox,
     // wiring
     RewireAll,
-    __version: "4.4.10"
+    __version: "4.4.11"
   });
 
   Object.defineProperty(window, "VisualCode", { value: API, writable: false, configurable: false });
@@ -850,7 +850,7 @@ QUIZ_API.ProjectileQuiz = function(id)
         //lblQuestion.Text = "Answer to Question #1:";
        
         ddlAnswer = v.CreateDropDown(self.Id + "_answer", ["A","B","C","D"]);
-        ddlAnswer.Title = "Answer to Question #1";
+        ddlAnswer.Title = "Q1";
 
         txtAngle = v.CreateTextBox(self.Id + "_angle");
         txtAngle.Title = "Angle";
@@ -1102,7 +1102,7 @@ QUIZ_API.ProjectileQuiz = function(id)
     this.LoadQuestion = function(index)
     {
         /////lblQuestion.Text = "Answer to Question #" + (index + 1) + ":";
-       ddlAnswer.Title = "Answer to Question #" + (index + 1) + ":";
+       ddlAnswer.Title = "Q" + (index + 1) + ":";
        
         self.TryCount = 0;
 
