@@ -843,14 +843,14 @@ QUIZ_API.ProjectileQuiz = function(id)
         lblTitle = v.CreateLabel(self.Id + "_title");
         lblTitle.Text = self.Title;
 
-        lblInstructions = v.CreateLabel(self.Id + "_instructions");
-        lblInstructions.Text = self.Instructions;
+        ////lblInstructions = v.CreateLabel(self.Id + "_instructions");
+        ////lblInstructions.Text = self.Instructions;
 
-        lblQuestion = v.CreateLabel(self.Id + "_question");
-        lblQuestion.Text = "Answer to Question #1:";
+        //lblQuestion = v.CreateLabel(self.Id + "_question");
+        //lblQuestion.Text = "Answer to Question #1:";
        
         ddlAnswer = v.CreateDropDown(self.Id + "_answer", ["A","B","C","D"]);
-        ddlAnswer.Title = "Answer";
+        ddlAnswer.Title = "Answer to Question #1";
 
         txtAngle = v.CreateTextBox(self.Id + "_angle");
         txtAngle.Title = "Angle";
@@ -864,10 +864,10 @@ QUIZ_API.ProjectileQuiz = function(id)
         v.Layout.Add(lblTitle);
         v.Layout.NewLine();
 
-        v.Layout.Add(lblInstructions);
-        v.Layout.NewLine();
+        //v.Layout.Add(lblInstructions);
+        //v.Layout.NewLine();
 
-        v.Layout.Add(lblQuestion);
+        //v.Layout.Add(lblQuestion);
         v.Layout.Add(ddlAnswer);
         v.Layout.Add(txtAngle);
         v.Layout.NewLine();
@@ -1101,7 +1101,8 @@ QUIZ_API.ProjectileQuiz = function(id)
 
     this.LoadQuestion = function(index)
     {
-        lblQuestion.Text = "Answer to Question #" + (index + 1) + ":";
+        /////lblQuestion.Text = "Answer to Question #" + (index + 1) + ":";
+       ddlAnswer.Title = "Answer to Question #" + (index + 1) + ":";
        
         self.TryCount = 0;
 
