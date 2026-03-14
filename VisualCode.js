@@ -2,6 +2,7 @@
    Class-based teaching UI library
    Version: 4.4.7  (MessageBox Copy button; SD Step-2 long lines)
    Exported global: VisualCode
+   This New version includes QuizCode
 */
 (() => {
   "use strict";
@@ -740,3 +741,394 @@ ${text}`;
   try { console.log("VisualCode loaded:", API.__version); } catch {}
 })();
 
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+// ======================================================
+// QuizCode API
+// ------------------------------------------------------
+// Separate quiz API that can live below the VisualCode
+// section in the same .js file.
+//
+// Coder writes:
+//
+// var q = QuizCode;
+// var quiz = new q.ProjectileQuiz("quiz1");
+// quiz.Title = "Projectile Quiz";
+// quiz.CorrectAnswers = ["B","D","A","C"];
+// quiz.Start();
+//
+// ======================================================
+
+const QUIZ_API = {};
+
+// ======================================================
+// QuizCode.ProjectileQuiz
+// ------------------------------------------------------
+// Minimal API quiz engine using projectile motion.
+// ======================================================
+
+QUIZ_API.ProjectileQuiz = function(id)
+{
+    var self = this;
+
+    // --------------------------------------------------
+    // PUBLIC PROPERTIES (coder can set)
+    // --------------------------------------------------
+
+    this.Id = id;
+
+    this.Title = "Projectile Quiz";
+
+    this.Instructions =
+    "Choose the answer you believe is correct.\n" +
+    "Enter a launch angle until you hit that target.";
+
+    this.CorrectAnswers = [];
+
+    // Physics parameters
+
+    this.RangeFactor = 40;
+    this.HitTolerance = 2;
+
+    // Visual parameters
+
+    this.Width = 700;
+    this.Height = 320;
+
+    // --------------------------------------------------
+    // INTERNAL STATE
+    // --------------------------------------------------
+
+    this.CurrentQuestionIndex = 0;
+    this.StudentChoice = "";
+    this.TryCount = 0;
+
+    this.AcademicScore = 0;
+    this.AccuracyScore = 0;
+
+    this.TargetDistances = {};
+
+    // --------------------------------------------------
+    // INTERNAL CONTROLS
+    // --------------------------------------------------
+
+    var lblTitle;
+    var lblInstructions;
+
+    var ddlAnswer;
+    var txtAngle;
+
+    var btnLaunch;
+    var btnNext;
+
+    var svg;
+
+    // --------------------------------------------------
+    // CREATE UI
+    // --------------------------------------------------
+
+    this.CreateUI = function()
+    {
+        var v = VisualCode;
+
+        lblTitle = v.CreateLabel(self.Id + "_title");
+        lblTitle.Text = self.Title;
+
+        lblInstructions = v.CreateLabel(self.Id + "_instructions");
+        lblInstructions.Text = self.Instructions;
+
+        ddlAnswer = v.CreateDropDown(self.Id + "_answer", ["A","B","C","D"]);
+        ddlAnswer.Title = "Answer";
+
+        txtAngle = v.CreateTextBox(self.Id + "_angle");
+        txtAngle.Title = "Angle";
+
+        btnLaunch = v.CreateButton(self.Id + "_launch");
+        btnLaunch.Text = "Launch";
+
+        btnNext = v.CreateButton(self.Id + "_next");
+        btnNext.Text = "Next";
+
+        v.Layout.Add(lblTitle);
+        v.Layout.NewLine();
+
+        v.Layout.Add(lblInstructions);
+        v.Layout.NewLine();
+
+        v.Layout.Add(ddlAnswer);
+        v.Layout.Add(txtAngle);
+        v.Layout.NewLine();
+
+        v.Layout.Add(btnLaunch);
+        v.Layout.Add(btnNext);
+
+        btnLaunch.Click = function()
+        {
+            self.Launch();
+        };
+
+        btnNext.Click = function()
+        {
+            self.NextQuestion();
+        };
+
+        // Create SVG drawing area
+
+        svg = document.createElementNS("http://www.w3.org/2000/svg","svg");
+
+        svg.setAttribute("width", self.Width);
+        svg.setAttribute("height", self.Height);
+
+        svg.style.border = "1px solid #999";
+        svg.style.marginTop = "20px";
+        svg.style.background = "#f9fbff";
+
+        document.body.appendChild(svg);
+    };
+
+    // --------------------------------------------------
+    // TARGET GENERATION
+    // --------------------------------------------------
+
+    this.GenerateTargets = function(index)
+    {
+        var base = 10 + index * 2;
+
+        return {
+            A: base,
+            B: base + 6,
+            C: base + 12,
+            D: base + 18
+        };
+    };
+
+    // --------------------------------------------------
+    // DRAW HELPERS
+    // --------------------------------------------------
+
+    function clearSVG()
+    {
+        while(svg.firstChild)
+            svg.removeChild(svg.firstChild);
+    }
+
+    function drawLine(x1, y1, x2, y2, color)
+    {
+        var line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+
+        line.setAttribute("x1", x1);
+        line.setAttribute("y1", y1);
+        line.setAttribute("x2", x2);
+        line.setAttribute("y2", y2);
+
+        line.setAttribute("stroke", color);
+        line.setAttribute("stroke-width", "2");
+
+        svg.appendChild(line);
+    }
+
+    function drawCircle(x, y, r, color)
+    {
+        var c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+
+        c.setAttribute("cx", x);
+        c.setAttribute("cy", y);
+        c.setAttribute("r", r);
+
+        c.setAttribute("fill", color);
+        c.setAttribute("stroke", "black");
+
+        svg.appendChild(c);
+    }
+
+    function drawText(x, y, text)
+    {
+        var t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+
+        t.setAttribute("x", x);
+        t.setAttribute("y", y);
+
+        t.setAttribute("text-anchor", "middle");
+        t.setAttribute("font-size", "16");
+
+        t.textContent = text;
+
+        svg.appendChild(t);
+    }
+
+    // --------------------------------------------------
+    // DRAW SCENE
+    // --------------------------------------------------
+
+    this.DrawScene = function()
+    {
+        clearSVG();
+
+        var groundY = 250;
+        var launchX = 60;
+        var scale = 18;
+
+        drawLine(20, groundY, self.Width - 20, groundY, "#333");
+
+        drawCircle(launchX, groundY, 10, "#666");
+
+        var letters = ["A", "B", "C", "D"];
+
+        for(var i = 0; i < 4; i++)
+        {
+            var letter = letters[i];
+            var dist = self.TargetDistances[letter];
+
+            var x = launchX + dist * scale;
+
+            drawCircle(x, 220, 18, "#ffe9b3");
+
+            drawText(x, 225, letter);
+        }
+    };
+
+    // --------------------------------------------------
+    // DETERMINE HIT
+    // --------------------------------------------------
+
+    this.GetHit = function(range)
+    {
+        if(Math.abs(range - self.TargetDistances.A) <= self.HitTolerance) return "A";
+        if(Math.abs(range - self.TargetDistances.B) <= self.HitTolerance) return "B";
+        if(Math.abs(range - self.TargetDistances.C) <= self.HitTolerance) return "C";
+        if(Math.abs(range - self.TargetDistances.D) <= self.HitTolerance) return "D";
+
+        return "";
+    };
+
+    // --------------------------------------------------
+    // ACCURACY SCORING
+    // --------------------------------------------------
+
+    this.GetAccuracyPoints = function(tries)
+    {
+        if(tries == 1) return 3;
+        if(tries == 2) return 2;
+        if(tries == 3) return 1;
+
+        return 0;
+    };
+
+    // --------------------------------------------------
+    // LAUNCH
+    // --------------------------------------------------
+
+    this.Launch = function()
+    {
+        self.StudentChoice = ddlAnswer.Value;
+
+        var angle = parseFloat(txtAngle.Value);
+
+        if(isNaN(angle))
+        {
+            VisualCode.MessageBox("Enter a valid angle.");
+            return;
+        }
+
+        self.TryCount++;
+
+        var range =
+            self.RangeFactor *
+            Math.sin(2 * angle * Math.PI / 180);
+
+        var hit = self.GetHit(range);
+
+        if(hit == self.StudentChoice)
+        {
+            var correct =
+                self.StudentChoice ==
+                self.CorrectAnswers[self.CurrentQuestionIndex];
+
+            if(correct)
+                self.AcademicScore++;
+
+            self.AccuracyScore +=
+                self.GetAccuracyPoints(self.TryCount);
+
+            VisualCode.MessageBox(
+                correct
+                ? "Correct!"
+                : "Incorrect. Correct answer: " +
+                  self.CorrectAnswers[self.CurrentQuestionIndex]
+            );
+        }
+    };
+
+    // --------------------------------------------------
+    // NEXT QUESTION
+    // --------------------------------------------------
+
+    this.NextQuestion = function()
+    {
+        self.CurrentQuestionIndex++;
+
+        if(self.CurrentQuestionIndex >= self.CorrectAnswers.length)
+        {
+            VisualCode.MessageBox(
+                "Quiz finished\n\n" +
+                "Academic Score: " + self.AcademicScore +
+                " / " + self.CorrectAnswers.length +
+                "\nAccuracy Score: " + self.AccuracyScore
+            );
+
+            return;
+        }
+
+        self.LoadQuestion(self.CurrentQuestionIndex);
+    };
+
+    // --------------------------------------------------
+    // LOAD QUESTION
+    // --------------------------------------------------
+
+    this.LoadQuestion = function(index)
+    {
+        self.TryCount = 0;
+
+        self.TargetDistances =
+            self.GenerateTargets(index);
+
+        self.DrawScene();
+    };
+
+    // --------------------------------------------------
+    // START QUIZ
+    // --------------------------------------------------
+
+    this.Start = function()
+    {
+        self.CreateUI();
+
+        self.CurrentQuestionIndex = 0;
+
+        self.LoadQuestion(0);
+    };
+};
+
+// ======================================================
+// EXPORT QUIZ API
+// ======================================================
+
+Object.assign(QUIZ_API, {
+    __version: "1.0.0"
+});
+
+Object.defineProperty(window, "QuizCode", {
+    value: QUIZ_API,
+    writable: false,
+    configurable: false
+});
+
+try { console.log("QuizCode loaded:", QUIZ_API.__version); } catch {}
