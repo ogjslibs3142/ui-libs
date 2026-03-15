@@ -1,6 +1,6 @@
 /* VisualCode.js
    Class-based teaching UI library
-   Version: 4.4.29  (MessageBox Copy button; SD Step-2 long lines)
+   Version: 4.4.30  (MessageBox Copy button; SD Step-2 long lines)
    Exported global: VisualCode
    This New version includes QuizCode
 */
@@ -734,7 +734,7 @@ ${text}`;
     MessageBox,
     // wiring
     RewireAll,
-    __version: "4.4.29"
+    __version: "4.4.30"
   });
 
   Object.defineProperty(window, "VisualCode", { value: API, writable: false, configurable: false });
@@ -833,7 +833,7 @@ QUIZ_API.ProjectileQuiz = function(id)
     }
 
     // --------------------------------------------------
-    // BUTTON / CONTROL ENABLE-DISABLE
+    // CONTROL ENABLE / DISABLE
     // --------------------------------------------------
 
     function setNextEnabled(bEnabled)
@@ -858,6 +858,32 @@ QUIZ_API.ProjectileQuiz = function(id)
         e.style.cursor = bEnabled ? "pointer" : "default";
     }
 
+    function setAnswerEnabled(bEnabled)
+    {
+        var e = document.getElementById(self.Id + "_answer");
+
+        if(!e) return;
+
+        e.disabled = !bEnabled;
+        e.style.opacity = bEnabled ? "1" : "0.45";
+        e.style.cursor = bEnabled ? "pointer" : "default";
+    }
+
+    function setAutopilotEnabled(bEnabled)
+    {
+        if(!chkAutopilot) return;
+
+        chkAutopilot.disabled = !bEnabled;
+        chkAutopilot.style.opacity = bEnabled ? "1" : "0.45";
+        chkAutopilot.style.cursor = bEnabled ? "pointer" : "default";
+
+        if(lblAutopilot)
+        {
+            lblAutopilot.style.opacity = bEnabled ? "1" : "0.45";
+            lblAutopilot.style.cursor = bEnabled ? "pointer" : "default";
+        }
+    }
+
     function updateAngleState()
     {
         if(!chkAutopilot) return;
@@ -865,8 +891,13 @@ QUIZ_API.ProjectileQuiz = function(id)
         if(QuestionAnswered || IsAnimating)
         {
             setAngleEnabled(false);
+            setAnswerEnabled(false);
+            setAutopilotEnabled(false);
             return;
         }
+
+        setAnswerEnabled(true);
+        setAutopilotEnabled(true);
 
         if(chkAutopilot.checked)
             setAngleEnabled(false);
@@ -942,12 +973,11 @@ QUIZ_API.ProjectileQuiz = function(id)
         // --------------------------------------------------
         // AUTOPILOT CHECKBOX (plain DOM)
         // --------------------------------------------------
-        // This is intentionally NOT added with v.Layout.Add(...)
-        // because v.Layout.Add expects VisualCode controls.
 
         chkAutopilot = document.createElement("input");
         chkAutopilot.type = "checkbox";
         chkAutopilot.id = self.Id + "_autopilot";
+        chkAutopilot.checked = true;
 
         lblAutopilot = document.createElement("label");
         lblAutopilot.htmlFor = chkAutopilot.id;
@@ -955,8 +985,10 @@ QUIZ_API.ProjectileQuiz = function(id)
         lblAutopilot.style.marginLeft = "6px";
 
         autopilotWrap = document.createElement("div");
-        autopilotWrap.style.marginTop = "8px";
-        autopilotWrap.style.marginBottom = "8px";
+        autopilotWrap.style.position = "relative";
+        autopilotWrap.style.marginTop = "-56px";
+        autopilotWrap.style.marginLeft = "355px";
+        autopilotWrap.style.marginBottom = "20px";
         autopilotWrap.style.display = "inline-block";
         autopilotWrap.appendChild(chkAutopilot);
         autopilotWrap.appendChild(lblAutopilot);
@@ -976,7 +1008,6 @@ QUIZ_API.ProjectileQuiz = function(id)
         {
             answerElement.addEventListener("change", function()
             {
-                // immediate target highlight update
                 self.DrawScene();
 
                 if(chkAutopilot && chkAutopilot.checked && ddlAnswer.Value != "" && !QuestionAnswered && !IsAnimating)
