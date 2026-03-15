@@ -1,6 +1,6 @@
 /* VisualCode.js
    Class-based teaching UI library
-   Version: 4.4.37  (Added CreateCheckbox)
+   Version: 4.4.38  (Added CreateCheckbox)
    Exported global: VisualCode
    This New version includes QuizCode
 */
@@ -780,7 +780,7 @@ ${text}`;
     MessageBox,
     // wiring
     RewireAll,
-    __version: "4.4.37"
+    __version: "4.4.38"
   });
 
   Object.defineProperty(window, "VisualCode", { value: API, writable: false, configurable: false });
@@ -865,7 +865,6 @@ QUIZ_API.ProjectileQuiz = function(id)
     var ddlAnswer;
     var ddlAngle;
     var btnNext;
-    var btnOpenExam;
     var btnCopyExamUrl;
     var svg;
     var chkAutopilot;
@@ -983,14 +982,10 @@ QUIZ_API.ProjectileQuiz = function(id)
         lblTitle = v.CreateLabel(self.Id + "_title");
         lblTitle.Text = self.Title;
 
-        btnOpenExam = null;
         btnCopyExamUrl = null;
 
         if(self.PdfFileName != "")
         {
-            btnOpenExam = v.CreateButton(self.Id + "_openexam");
-            btnOpenExam.Text = "Open Exam";
-
             btnCopyExamUrl = v.CreateButton(self.Id + "_copyexamurl");
             btnCopyExamUrl.Text = "Copy Exam URL";
         }
@@ -1018,9 +1013,6 @@ QUIZ_API.ProjectileQuiz = function(id)
         titleRow.style.margin = "10px 0";
         titleRow.style.flexWrap = "wrap";
         titleRow.appendChild(lblTitle._node());
-
-        if(btnOpenExam)
-            titleRow.appendChild(btnOpenExam._node());
 
         if(btnCopyExamUrl)
             titleRow.appendChild(btnCopyExamUrl._node());
@@ -1057,33 +1049,11 @@ QUIZ_API.ProjectileQuiz = function(id)
             self.NextQuestion();
         });
 
-        if(btnOpenExam)
-        {
-            registerClick(self.Id + "_openexam", function()
-            {
-                var a = document.createElement("a");
-                a.href = self.PdfFileName;
-                a.target = "_blank";
-                a.rel = "noopener noreferrer";
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-            });
-        }
-
         if(btnCopyExamUrl)
         {
-            registerClick(self.Id + "_copyexamurl", async function()
+            registerClick(self.Id + "_copyexamurl", function()
             {
-                try
-                {
-                    await navigator.clipboard.writeText(self.PdfFileName);
-                    VisualCode.MessageBox("Exam URL copied.\nPaste it into a new tab.");
-                }
-                catch
-                {
-                    VisualCode.MessageBox("Could not copy automatically.\n\n" + self.PdfFileName);
-                }
+                VisualCode.MessageBox(self.PdfFileName);
             });
         }
 
@@ -1646,7 +1616,7 @@ QUIZ_API.ProjectileQuiz = function(id)
 // ======================================================
 
 Object.assign(QUIZ_API,{
-    __version:"1.2.1"
+    __version:"1.2.2"
 });
 
 Object.defineProperty(window,"QuizCode",{
@@ -1656,8 +1626,6 @@ Object.defineProperty(window,"QuizCode",{
 });
 
 try{console.log("QuizCode loaded:",QUIZ_API.__version);}catch{}
-
-
 
 
 
