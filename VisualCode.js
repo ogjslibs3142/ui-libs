@@ -734,7 +734,7 @@ ${text}`;
     MessageBox,
     // wiring
     RewireAll,
-    __version: "4.4.17"
+    __version: "4.4.18"
   });
 
   Object.defineProperty(window, "VisualCode", { value: API, writable: false, configurable: false });
@@ -747,7 +747,6 @@ ${text}`;
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 
 // ======================================================
 // QuizCode API
@@ -843,6 +842,34 @@ QUIZ_API.ProjectileQuiz = function(id)
         e.style.cursor = bEnabled ? "pointer" : "default";
     }
 
+    function setLaunchEnabled(bEnabled)
+    {
+        var e = document.getElementById(self.Id + "_launch");
+
+        if(!e) return;
+
+        e.disabled = !bEnabled;
+        e.style.opacity = bEnabled ? "1" : "0.45";
+        e.style.cursor = bEnabled ? "pointer" : "default";
+    }
+
+    function updateLaunchState()
+    {
+        if(QuestionAnswered)
+        {
+            setLaunchEnabled(false);
+            return;
+        }
+
+        var answer = ddlAnswer.Value;
+        var angle = txtAngle.Value;
+
+        if(answer != "" && angle != "")
+            setLaunchEnabled(true);
+        else
+            setLaunchEnabled(false);
+    }
+
     // --------------------------------------------------
     // CREATE UI
     // --------------------------------------------------
@@ -908,6 +935,12 @@ QUIZ_API.ProjectileQuiz = function(id)
         VisualCode.RewireAll();
 
         ddlAnswer.Value = "";
+        txtAngle.Value = "";
+
+        document.addEventListener("change", updateLaunchState);
+        document.addEventListener("keyup", updateLaunchState);
+
+        setLaunchEnabled(false);
         setNextEnabled(false);
     };
 
@@ -1156,6 +1189,7 @@ QUIZ_API.ProjectileQuiz = function(id)
         self.AccuracyScore += self.GetAccuracyPoints(self.TryCount);
 
         QuestionAnswered = true;
+        setLaunchEnabled(false);
         setNextEnabled(true);
 
         VisualCode.MessageBox(
@@ -1210,6 +1244,7 @@ QUIZ_API.ProjectileQuiz = function(id)
         LastRange = 0;
         QuestionAnswered = false;
 
+        setLaunchEnabled(false);
         setNextEnabled(false);
 
         self.TargetDistances = self.GenerateTargets(index);
@@ -1244,5 +1279,8 @@ Object.defineProperty(window,"QuizCode",{
 });
 
 try{console.log("QuizCode loaded:",QUIZ_API.__version);}catch{}
+
+
+
 
 
