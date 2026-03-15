@@ -1,6 +1,6 @@
 /* VisualCode.js
    Class-based teaching UI library
-   Version: 4.4.22  (MessageBox Copy button; SD Step-2 long lines)
+   Version: 4.4.23  (MessageBox Copy button; SD Step-2 long lines)
    Exported global: VisualCode
    This New version includes QuizCode
 */
@@ -734,7 +734,7 @@ ${text}`;
     MessageBox,
     // wiring
     RewireAll,
-    __version: "4.4.22"
+    __version: "4.4.23"
   });
 
   Object.defineProperty(window, "VisualCode", { value: API, writable: false, configurable: false });
@@ -764,7 +764,6 @@ ${text}`;
 //
 // ======================================================
 
-// QuizCode API
 const QUIZ_API = {};
 
 // ======================================================
@@ -807,6 +806,7 @@ QUIZ_API.ProjectileQuiz = function(id)
     var LastRange = 0;
     var QuestionAnswered = false;
     var IsAnimating = false;
+    var UsedAutopilot = false;
 
     // --------------------------------------------------
     // INTERNAL CONTROLS
@@ -815,7 +815,6 @@ QUIZ_API.ProjectileQuiz = function(id)
     var lblTitle;
     var ddlAnswer;
     var ddlAngle;
-    var btnLaunch;
     var btnNext;
     var svg;
 
@@ -843,37 +842,13 @@ QUIZ_API.ProjectileQuiz = function(id)
         e.style.cursor = bEnabled ? "pointer" : "default";
     }
 
-    function setLaunchEnabled(bEnabled)
-    {
-        var e = document.getElementById(self.Id + "_launch");
-
-        if(!e) return;
-
-        e.disabled = !bEnabled;
-        e.style.opacity = bEnabled ? "1" : "0.45";
-        e.style.cursor = bEnabled ? "pointer" : "default";
-    }
-
-    function updateLaunchState()
-    {
-        if(QuestionAnswered || IsAnimating)
-        {
-            setLaunchEnabled(false);
-            return;
-        }
-
-        var answer = ddlAnswer.Value;
-        var angle = ddlAngle.Value;
-
-        if(answer != "" && angle != "")
-            setLaunchEnabled(true);
-        else
-            setLaunchEnabled(false);
-    }
+    // --------------------------------------------------
+    // ANGLE ITEMS
+    // --------------------------------------------------
 
     function getAngleItems()
     {
-        var items = [""];
+        var items = ["", "Autopilot"];
 
         for(var angle = 5; angle <= 85; angle = angle + 5)
             items.push(String(angle));
@@ -898,9 +873,6 @@ QUIZ_API.ProjectileQuiz = function(id)
         ddlAngle = v.CreateDropDown(self.Id + "_angle", getAngleItems());
         ddlAngle.Title = "Angle";
 
-        btnLaunch = v.CreateButton(self.Id + "_launch");
-        btnLaunch.Text = "Launch";
-
         btnNext = v.CreateButton(self.Id + "_next");
         btnNext.Text = "Next";
 
@@ -911,17 +883,11 @@ QUIZ_API.ProjectileQuiz = function(id)
         v.Layout.Add(ddlAngle);
         v.Layout.NewLine();
 
-        v.Layout.Add(btnLaunch);
         v.Layout.Add(btnNext);
 
         // --------------------------------------------------
         // REGISTER EVENTS (VisualCode style)
         // --------------------------------------------------
-
-        registerClick(self.Id + "_launch", function()
-        {
-            self.Launch();
-        });
 
         registerClick(self.Id + "_next", function()
         {
@@ -952,12 +918,24 @@ QUIZ_API.ProjectileQuiz = function(id)
         var angleElement = document.getElementById(self.Id + "_angle");
 
         if(answerElement)
-            answerElement.addEventListener("change", updateLaunchState);
+        {
+            answerElement.addEventListener("change", function()
+            {
+                self.DrawScene();
+
+                if(ddlAngle.Value == "Autopilot" && ddlAnswer.Value != "" && !QuestionAnswered && !IsAnimating)
+                    self.Launch();
+            });
+        }
 
         if(angleElement)
-            angleElement.addEventListener("change", updateLaunchState);
+        {
+            angleElement.addEventListener("change", function()
+            {
+                self.Launch();
+            });
+        }
 
-        setLaunchEnabled(false);
         setNextEnabled(false);
     };
 
@@ -1107,7 +1085,6 @@ QUIZ_API.ProjectileQuiz = function(id)
         var duration = 700;
 
         IsAnimating = true;
-        setLaunchEnabled(false);
         setNextEnabled(false);
 
         function step(timestamp)
@@ -1164,16 +1141,26 @@ QUIZ_API.ProjectileQuiz = function(id)
 
         drawCircle(launchX,groundY,10,"#666");
 
-        var letters=["A","B","C","D"];
+        var letters = ["A","B","C","D"];
+        var selected = ddlAnswer ? ddlAnswer.Value : "";
 
-        for(var i=0;i<4;i++)
+        for(var i = 0; i < 4; i++)
         {
-            var letter=letters[i];
-            var dist=self.TargetDistances[letter];
+            var letter = letters[i];
+            var dist = self.TargetDistances[letter];
+            var x = launchX + dist * scale;
 
-            var x=launchX+dist*scale;
+            var fillColor = "#ffe9b3";
 
-            drawCircle(x,220,18,"#ffe9b3");
+            if(selected != "")
+            {
+                if(letter == selected)
+                    fillColor = "#ffe9b3";
+                else
+                    fillColor = "white";
+            }
+
+            drawCircle(x,220,18,fillColor);
             drawText(x,225,letter);
         }
     };
@@ -1182,7 +1169,7 @@ QUIZ_API.ProjectileQuiz = function(id)
     // DETERMINE HIT
     // --------------------------------------------------
 
-    this.GetHit=function(range)
+    this.GetHit = function(range)
     {
         if(Math.abs(range-self.TargetDistances.A)<=self.HitTolerance) return "A";
         if(Math.abs(range-self.TargetDistances.B)<=self.HitTolerance) return "B";
@@ -1196,7 +1183,7 @@ QUIZ_API.ProjectileQuiz = function(id)
     // ACCURACY SCORING
     // --------------------------------------------------
 
-    this.GetAccuracyPoints=function(tries)
+    this.GetAccuracyPoints = function(tries)
     {
         if(tries==1) return 3;
         if(tries==2) return 2;
@@ -1205,11 +1192,27 @@ QUIZ_API.ProjectileQuiz = function(id)
         return 0;
     };
 
+    function getAutopilotAngleForChoice(choice)
+    {
+        var dist = self.TargetDistances[choice];
+
+        if(dist == null)
+            return 45;
+
+        var ratio = dist / self.RangeFactor;
+
+        if(ratio > 1) ratio = 1;
+        if(ratio < 0) ratio = 0;
+
+        var angle2 = Math.asin(ratio) * 180 / Math.PI;
+        return angle2 / 2;
+    }
+
     // --------------------------------------------------
     // LAUNCH
     // --------------------------------------------------
 
-    this.Launch=function()
+    this.Launch = function()
     {
         if(QuestionAnswered)
         {
@@ -1224,16 +1227,36 @@ QUIZ_API.ProjectileQuiz = function(id)
 
         if(self.StudentChoice == "")
         {
-            VisualCode.MessageBox("Select an answer first.");
+            if(ddlAngle.Value != "")
+                VisualCode.MessageBox("Select an answer first.");
+
+            ddlAngle.Value = "";
             return;
         }
 
-        var angle = parseFloat(ddlAngle.Value);
+        var angleText = ddlAngle.Value;
 
-        if(isNaN(angle))
-        {
-            VisualCode.MessageBox("Select an angle.");
+        if(angleText == "")
             return;
+
+        var angle;
+        UsedAutopilot = false;
+
+        if(angleText == "Autopilot")
+        {
+            angle = getAutopilotAngleForChoice(self.StudentChoice);
+            UsedAutopilot = true;
+        }
+        else
+        {
+            angle = parseFloat(angleText);
+
+            if(isNaN(angle))
+            {
+                VisualCode.MessageBox("Select a valid angle.");
+                ddlAngle.Value = "";
+                return;
+            }
         }
 
         self.TryCount++;
@@ -1243,6 +1266,9 @@ QUIZ_API.ProjectileQuiz = function(id)
         LastRange = range;
         LastHit = self.GetHit(range);
 
+        if(UsedAutopilot)
+            LastHit = self.StudentChoice;
+
         var endColor = "green";
         if(LastHit == "")
             endColor = "red";
@@ -1251,16 +1277,16 @@ QUIZ_API.ProjectileQuiz = function(id)
 
         animateProjectile(angle, range, endColor, function()
         {
+            ddlAngle.Value = "";
+
             if(LastHit == "")
             {
-                updateLaunchState();
                 VisualCode.MessageBox("Missed all targets.");
                 return;
             }
 
             if(LastHit != self.StudentChoice)
             {
-                updateLaunchState();
                 VisualCode.MessageBox("You hit " + LastHit + ", not " + self.StudentChoice);
                 return;
             }
@@ -1271,10 +1297,10 @@ QUIZ_API.ProjectileQuiz = function(id)
             if(correct)
                 self.AcademicScore++;
 
-            self.AccuracyScore += self.GetAccuracyPoints(self.TryCount);
+            if(!UsedAutopilot)
+                self.AccuracyScore += self.GetAccuracyPoints(self.TryCount);
 
             QuestionAnswered = true;
-            setLaunchEnabled(false);
             setNextEnabled(true);
 
             VisualCode.MessageBox(
@@ -1290,7 +1316,7 @@ QUIZ_API.ProjectileQuiz = function(id)
     // NEXT QUESTION
     // --------------------------------------------------
 
-    this.NextQuestion=function()
+    this.NextQuestion = function()
     {
         if(!QuestionAnswered)
         {
@@ -1300,13 +1326,18 @@ QUIZ_API.ProjectileQuiz = function(id)
 
         self.CurrentQuestionIndex++;
 
-        if(self.CurrentQuestionIndex>=self.CorrectAnswers.length)
+        if(self.CurrentQuestionIndex >= self.CorrectAnswers.length)
         {
+            var accuracyText =
+                UsedAutopilot
+                ? "Autopilot used"
+                : String(self.AccuracyScore);
+
             VisualCode.MessageBox(
                 "Quiz finished\n\n"+
-                "Academic Score: "+self.AcademicScore+
-                " / "+self.CorrectAnswers.length+
-                "\nAccuracy Score: "+self.AccuracyScore
+                "Academic Score: " + self.AcademicScore +
+                " / " + self.CorrectAnswers.length +
+                "\nAccuracy Score: " + accuracyText
             );
             return;
         }
@@ -1318,7 +1349,7 @@ QUIZ_API.ProjectileQuiz = function(id)
     // LOAD QUESTION
     // --------------------------------------------------
 
-    this.LoadQuestion=function(index)
+    this.LoadQuestion = function(index)
     {
         ddlAnswer.Title = "Q" + (index + 1);
         ddlAnswer.Value = "";
@@ -1331,23 +1362,21 @@ QUIZ_API.ProjectileQuiz = function(id)
         QuestionAnswered = false;
         IsAnimating = false;
 
-        setLaunchEnabled(false);
         setNextEnabled(false);
 
         self.TargetDistances = self.GenerateTargets(index);
 
         self.DrawScene();
-        updateLaunchState();
     };
 
     // --------------------------------------------------
     // START QUIZ
     // --------------------------------------------------
 
-    this.Start=function()
+    this.Start = function()
     {
         self.CreateUI();
-        self.CurrentQuestionIndex=0;
+        self.CurrentQuestionIndex = 0;
         self.LoadQuestion(0);
     };
 };
