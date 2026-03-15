@@ -734,7 +734,7 @@ ${text}`;
     MessageBox,
     // wiring
     RewireAll,
-    __version: "4.4.24"
+    __version: "4.4.25"
   });
 
   Object.defineProperty(window, "VisualCode", { value: API, writable: false, configurable: false });
@@ -747,6 +747,7 @@ ${text}`;
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 // ======================================================
 // QuizCode API
@@ -806,7 +807,7 @@ QUIZ_API.ProjectileQuiz = function(id)
     var LastRange = 0;
     var QuestionAnswered = false;
     var IsAnimating = false;
-    var UsedAutopilot = false;
+    var AnyAutopilotUsed = false;
 
     // --------------------------------------------------
     // INTERNAL CONTROLS
@@ -818,6 +819,9 @@ QUIZ_API.ProjectileQuiz = function(id)
     var btnNext;
     var svg;
 
+    var chkAutopilot;
+    var lblAutopilot;
+
     // --------------------------------------------------
     // EVENT REGISTRATION HELPER
     // --------------------------------------------------
@@ -828,7 +832,7 @@ QUIZ_API.ProjectileQuiz = function(id)
     }
 
     // --------------------------------------------------
-    // BUTTON ENABLE / DISABLE
+    // BUTTON / CONTROL ENABLE-DISABLE
     // --------------------------------------------------
 
     function setNextEnabled(bEnabled)
@@ -842,13 +846,40 @@ QUIZ_API.ProjectileQuiz = function(id)
         e.style.cursor = bEnabled ? "pointer" : "default";
     }
 
+    function setAngleEnabled(bEnabled)
+    {
+        var e = document.getElementById(self.Id + "_angle");
+
+        if(!e) return;
+
+        e.disabled = !bEnabled;
+        e.style.opacity = bEnabled ? "1" : "0.45";
+        e.style.cursor = bEnabled ? "pointer" : "default";
+    }
+
+    function updateAngleState()
+    {
+        if(!chkAutopilot) return;
+
+        if(QuestionAnswered || IsAnimating)
+        {
+            setAngleEnabled(false);
+            return;
+        }
+
+        if(chkAutopilot.checked)
+            setAngleEnabled(false);
+        else
+            setAngleEnabled(true);
+    }
+
     // --------------------------------------------------
     // ANGLE ITEMS
     // --------------------------------------------------
 
     function getAngleItems()
     {
-        var items = ["", "Autopilot"];
+        var items = [""];
 
         for(var angle = 5; angle <= 85; angle = angle + 5)
             items.push(String(angle));
@@ -907,6 +938,26 @@ QUIZ_API.ProjectileQuiz = function(id)
         svg.style.marginTop = "20px";
         svg.style.background = "#f9fbff";
 
+        // --------------------------------------------------
+        // AUTOPILOT CHECKBOX (plain DOM)
+        // --------------------------------------------------
+
+        chkAutopilot = document.createElement("input");
+        chkAutopilot.type = "checkbox";
+        chkAutopilot.id = self.Id + "_autopilot";
+
+        lblAutopilot = document.createElement("label");
+        lblAutopilot.htmlFor = chkAutopilot.id;
+        lblAutopilot.textContent = " Autopilot";
+        lblAutopilot.style.marginLeft = "6px";
+
+        var autopilotWrap = document.createElement("div");
+        autopilotWrap.style.marginTop = "8px";
+        autopilotWrap.style.marginBottom = "8px";
+        autopilotWrap.appendChild(chkAutopilot);
+        autopilotWrap.appendChild(lblAutopilot);
+
+        document.body.appendChild(autopilotWrap);
         document.body.appendChild(svg);
 
         VisualCode.RewireAll();
@@ -921,9 +972,10 @@ QUIZ_API.ProjectileQuiz = function(id)
         {
             answerElement.addEventListener("change", function()
             {
+                // immediate target highlight update
                 self.DrawScene();
 
-                if(ddlAngle.Value == "Autopilot" && ddlAnswer.Value != "" && !QuestionAnswered && !IsAnimating)
+                if(chkAutopilot && chkAutopilot.checked && ddlAnswer.Value != "" && !QuestionAnswered && !IsAnimating)
                     self.Launch();
             });
         }
@@ -932,11 +984,26 @@ QUIZ_API.ProjectileQuiz = function(id)
         {
             angleElement.addEventListener("change", function()
             {
+                if(chkAutopilot && chkAutopilot.checked)
+                    return;
+
                 self.Launch();
             });
         }
 
+        if(chkAutopilot)
+        {
+            chkAutopilot.addEventListener("change", function()
+            {
+                updateAngleState();
+
+                if(chkAutopilot.checked && ddlAnswer.Value != "" && !QuestionAnswered && !IsAnimating)
+                    self.Launch();
+            });
+        }
+
         setNextEnabled(false);
+        updateAngleState();
     };
 
     // --------------------------------------------------
@@ -1086,6 +1153,7 @@ QUIZ_API.ProjectileQuiz = function(id)
 
         IsAnimating = true;
         setNextEnabled(false);
+        updateAngleState();
 
         function step(timestamp)
         {
@@ -1151,16 +1219,34 @@ QUIZ_API.ProjectileQuiz = function(id)
             var x = launchX + dist * scale;
 
             var fillColor = "#ffe9b3";
+            var strokeColor = "black";
+            var strokeWidth = 1;
 
             if(selected != "")
             {
                 if(letter == selected)
+                {
                     fillColor = "#ffe9b3";
+                    strokeColor = "#d38b00";
+                    strokeWidth = 3;
+                }
                 else
+                {
                     fillColor = "white";
+                    strokeColor = "#cccccc";
+                    strokeWidth = 1;
+                }
             }
 
-            drawCircle(x,220,18,fillColor);
+            var c = document.createElementNS("http://www.w3.org/2000/svg","circle");
+            c.setAttribute("cx", x);
+            c.setAttribute("cy", 220);
+            c.setAttribute("r", 18);
+            c.setAttribute("fill", fillColor);
+            c.setAttribute("stroke", strokeColor);
+            c.setAttribute("stroke-width", strokeWidth);
+            svg.appendChild(c);
+
             drawText(x,225,letter);
         }
     };
@@ -1226,29 +1312,24 @@ QUIZ_API.ProjectileQuiz = function(id)
         self.StudentChoice = ddlAnswer.Value;
 
         if(self.StudentChoice == "")
-        {
-            if(ddlAngle.Value != "")
-                VisualCode.MessageBox("Select an answer first.");
-
-            ddlAngle.Value = "";
-            return;
-        }
-
-        var angleText = ddlAngle.Value;
-
-        if(angleText == "")
             return;
 
         var angle;
-        UsedAutopilot = false;
+        var usedAutopilotThisShot = false;
 
-        if(angleText == "Autopilot")
+        if(chkAutopilot && chkAutopilot.checked)
         {
             angle = getAutopilotAngleForChoice(self.StudentChoice);
-            UsedAutopilot = true;
+            usedAutopilotThisShot = true;
+            AnyAutopilotUsed = true;
         }
         else
         {
+            var angleText = ddlAngle.Value;
+
+            if(angleText == "")
+                return;
+
             angle = parseFloat(angleText);
 
             if(isNaN(angle))
@@ -1266,7 +1347,7 @@ QUIZ_API.ProjectileQuiz = function(id)
         LastRange = range;
         LastHit = self.GetHit(range);
 
-        if(UsedAutopilot)
+        if(usedAutopilotThisShot)
             LastHit = self.StudentChoice;
 
         var endColor = "green";
@@ -1277,16 +1358,19 @@ QUIZ_API.ProjectileQuiz = function(id)
 
         animateProjectile(angle, range, endColor, function()
         {
-            ddlAngle.Value = "";
+            if(!usedAutopilotThisShot)
+                ddlAngle.Value = "";
 
             if(LastHit == "")
             {
+                updateAngleState();
                 VisualCode.MessageBox("Missed all targets.");
                 return;
             }
 
             if(LastHit != self.StudentChoice)
             {
+                updateAngleState();
                 VisualCode.MessageBox("You hit " + LastHit + ", not " + self.StudentChoice);
                 return;
             }
@@ -1297,11 +1381,12 @@ QUIZ_API.ProjectileQuiz = function(id)
             if(correct)
                 self.AcademicScore++;
 
-            if(!UsedAutopilot)
+            if(!usedAutopilotThisShot)
                 self.AccuracyScore += self.GetAccuracyPoints(self.TryCount);
 
             QuestionAnswered = true;
             setNextEnabled(true);
+            updateAngleState();
 
             VisualCode.MessageBox(
                 correct ?
@@ -1328,10 +1413,12 @@ QUIZ_API.ProjectileQuiz = function(id)
 
         if(self.CurrentQuestionIndex >= self.CorrectAnswers.length)
         {
-            var accuracyText =
-                UsedAutopilot
-                ? "Autopilot used"
-                : String(self.AccuracyScore);
+            var accuracyText;
+
+            if(AnyAutopilotUsed)
+                accuracyText = "Autopilot used";
+            else
+                accuracyText = self.AccuracyScore + " / " + (self.CorrectAnswers.length * 3);
 
             VisualCode.MessageBox(
                 "Quiz finished\n\n"+
@@ -1355,6 +1442,9 @@ QUIZ_API.ProjectileQuiz = function(id)
         ddlAnswer.Value = "";
         ddlAngle.Value = "";
 
+        if(chkAutopilot)
+            chkAutopilot.checked = false;
+
         self.TryCount = 0;
 
         LastHit = "";
@@ -1367,6 +1457,7 @@ QUIZ_API.ProjectileQuiz = function(id)
         self.TargetDistances = self.GenerateTargets(index);
 
         self.DrawScene();
+        updateAngleState();
     };
 
     // --------------------------------------------------
@@ -1396,3 +1487,6 @@ Object.defineProperty(window,"QuizCode",{
 });
 
 try{console.log("QuizCode loaded:",QUIZ_API.__version);}catch{}
+
+
+
