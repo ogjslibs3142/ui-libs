@@ -748,7 +748,6 @@ ${text}`;
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
 // ======================================================
 // QuizCode API
 // ------------------------------------------------------
@@ -815,7 +814,7 @@ QUIZ_API.ProjectileQuiz = function(id)
 
     var lblTitle;
     var ddlAnswer;
-    var txtAngle;
+    var ddlAngle;
     var btnLaunch;
     var btnNext;
     var svg;
@@ -864,12 +863,22 @@ QUIZ_API.ProjectileQuiz = function(id)
         }
 
         var answer = ddlAnswer.Value;
-        var angle = txtAngle.Value;
+        var angle = ddlAngle.Value;
 
         if(answer != "" && angle != "")
             setLaunchEnabled(true);
         else
             setLaunchEnabled(false);
+    }
+
+    function getAngleItems()
+    {
+        var items = [""];
+
+        for(var angle = 5; angle <= 85; angle = angle + 5)
+            items.push(String(angle));
+
+        return items;
     }
 
     // --------------------------------------------------
@@ -886,8 +895,8 @@ QUIZ_API.ProjectileQuiz = function(id)
         ddlAnswer = v.CreateDropDown(self.Id + "_answer", ["", "A", "B", "C", "D"]);
         ddlAnswer.Title = "Q1";
 
-        txtAngle = v.CreateTextBox(self.Id + "_angle");
-        txtAngle.Title = "Angle";
+        ddlAngle = v.CreateDropDown(self.Id + "_angle", getAngleItems());
+        ddlAngle.Title = "Angle";
 
         btnLaunch = v.CreateButton(self.Id + "_launch");
         btnLaunch.Text = "Launch";
@@ -899,7 +908,7 @@ QUIZ_API.ProjectileQuiz = function(id)
         v.Layout.NewLine();
 
         v.Layout.Add(ddlAnswer);
-        v.Layout.Add(txtAngle);
+        v.Layout.Add(ddlAngle);
         v.Layout.NewLine();
 
         v.Layout.Add(btnLaunch);
@@ -937,7 +946,7 @@ QUIZ_API.ProjectileQuiz = function(id)
         VisualCode.RewireAll();
 
         ddlAnswer.Value = "";
-        txtAngle.Value = "";
+        ddlAngle.Value = "";
 
         var answerElement = document.getElementById(self.Id + "_answer");
         var angleElement = document.getElementById(self.Id + "_angle");
@@ -946,11 +955,7 @@ QUIZ_API.ProjectileQuiz = function(id)
             answerElement.addEventListener("change", updateLaunchState);
 
         if(angleElement)
-        {
-            angleElement.addEventListener("keyup", updateLaunchState);
             angleElement.addEventListener("change", updateLaunchState);
-            angleElement.addEventListener("input", updateLaunchState);
-        }
 
         setLaunchEnabled(false);
         setNextEnabled(false);
@@ -1223,11 +1228,11 @@ QUIZ_API.ProjectileQuiz = function(id)
             return;
         }
 
-        var angle = parseFloat(txtAngle.Value);
+        var angle = parseFloat(ddlAngle.Value);
 
         if(isNaN(angle))
         {
-            VisualCode.MessageBox("Enter a valid angle.");
+            VisualCode.MessageBox("Select an angle.");
             return;
         }
 
@@ -1317,7 +1322,7 @@ QUIZ_API.ProjectileQuiz = function(id)
     {
         ddlAnswer.Title = "Q" + (index + 1);
         ddlAnswer.Value = "";
-        txtAngle.Value = "";
+        ddlAngle.Value = "";
 
         self.TryCount = 0;
 
@@ -1362,4 +1367,3 @@ Object.defineProperty(window,"QuizCode",{
 });
 
 try{console.log("QuizCode loaded:",QUIZ_API.__version);}catch{}
-
