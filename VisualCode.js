@@ -1,6 +1,6 @@
 /* VisualCode.js
    Class-based teaching UI library
-   Version: 4.4.28  (MessageBox Copy button; SD Step-2 long lines)
+   Version: 4.4.29  (MessageBox Copy button; SD Step-2 long lines)
    Exported global: VisualCode
    This New version includes QuizCode
 */
@@ -734,7 +734,7 @@ ${text}`;
     MessageBox,
     // wiring
     RewireAll,
-    __version: "4.4.28"
+    __version: "4.4.29"
   });
 
   Object.defineProperty(window, "VisualCode", { value: API, writable: false, configurable: false });
@@ -821,6 +821,7 @@ QUIZ_API.ProjectileQuiz = function(id)
 
     var chkAutopilot;
     var lblAutopilot;
+    var autopilotWrap;
 
     // --------------------------------------------------
     // EVENT REGISTRATION HELPER
@@ -912,7 +913,6 @@ QUIZ_API.ProjectileQuiz = function(id)
 
         v.Layout.Add(ddlAnswer);
         v.Layout.Add(ddlAngle);
-        /////////////////////////////v.Layout.Add(chkAutopilot);
         v.Layout.NewLine();
 
         v.Layout.Add(btnNext);
@@ -942,6 +942,8 @@ QUIZ_API.ProjectileQuiz = function(id)
         // --------------------------------------------------
         // AUTOPILOT CHECKBOX (plain DOM)
         // --------------------------------------------------
+        // This is intentionally NOT added with v.Layout.Add(...)
+        // because v.Layout.Add expects VisualCode controls.
 
         chkAutopilot = document.createElement("input");
         chkAutopilot.type = "checkbox";
@@ -952,9 +954,10 @@ QUIZ_API.ProjectileQuiz = function(id)
         lblAutopilot.textContent = " Autopilot";
         lblAutopilot.style.marginLeft = "6px";
 
-        var autopilotWrap = document.createElement("div");
+        autopilotWrap = document.createElement("div");
         autopilotWrap.style.marginTop = "8px";
         autopilotWrap.style.marginBottom = "8px";
+        autopilotWrap.style.display = "inline-block";
         autopilotWrap.appendChild(chkAutopilot);
         autopilotWrap.appendChild(lblAutopilot);
 
@@ -1256,16 +1259,6 @@ QUIZ_API.ProjectileQuiz = function(id)
     // DETERMINE HIT
     // --------------------------------------------------
 
-    this.GetHit = function(range)
-    {
-        if(Math.abs(range-self.TargetDistances.A)<=self.HitTolerance) return "A";
-        if(Math.abs(range-self.TargetDistances.B)<=self.HitTolerance) return "B";
-        if(Math.abs(range-self.TargetDistances.C)<=self.HitTolerance) return "C";
-        if(Math.abs(range-self.TargetDistances.D)<=self.HitTolerance) return "D";
-
-        return "";
-    };
-
     this.GetSelectedTargetHit = function(angle, range)
     {
         var selected = ddlAnswer.Value;
@@ -1471,8 +1464,7 @@ QUIZ_API.ProjectileQuiz = function(id)
         ddlAnswer.Value = "";
         ddlAngle.Value = "";
 
-        if(chkAutopilot)
-            chkAutopilot.checked = false;
+        // preserve chkAutopilot.checked state
 
         self.TryCount = 0;
 
@@ -1516,4 +1508,5 @@ Object.defineProperty(window,"QuizCode",{
 });
 
 try{console.log("QuizCode loaded:",QUIZ_API.__version);}catch{}
+
 
