@@ -1,6 +1,6 @@
 /* VisualCode.js
    Class-based teaching UI library
-   Version: 4.4.34  (Added CreateCheckbox)
+   Version: 4.4.35  (Added CreateCheckbox)
    Exported global: VisualCode
    This New version includes QuizCode
 */
@@ -780,7 +780,7 @@ ${text}`;
     MessageBox,
     // wiring
     RewireAll,
-    __version: "4.4.34"
+    __version: "4.4.35"
   });
 
   Object.defineProperty(window, "VisualCode", { value: API, writable: false, configurable: false });
@@ -806,11 +806,80 @@ ${text}`;
 // var quiz = new q.ProjectileQuiz("quiz1");
 // quiz.Title = "Projectile Quiz";
 // quiz.CorrectAnswers = ["B","D","A","C"];
+// quiz.PdfFileName = "Algebra1Exam.pdf";
 // quiz.Start();
 //
 // ======================================================
 
 const QUIZ_API = {};
+
+// ======================================================
+// SPLIT SCREEN HELPER
+// ======================================================
+
+QUIZ_API.CreateSplitScreen = function(pdfFileName, rightPanelId)
+{
+    var app = document.getElementById("app") || document.body;
+
+    app.innerHTML = "";
+    app.style.margin = "0";
+    app.style.padding = "0";
+    app.style.width = "100vw";
+    app.style.height = "100vh";
+    app.style.boxSizing = "border-box";
+    app.style.overflow = "hidden";
+
+    document.body.style.margin = "0";
+    document.body.style.padding = "0";
+    document.body.style.overflow = "hidden";
+
+    var host = document.createElement("div");
+    host.style.display = "flex";
+    host.style.width = "100%";
+    host.style.height = "100%";
+
+    // -------------------------
+    // LEFT SIDE: PDF
+    // -------------------------
+    var leftPanel = document.createElement("div");
+    leftPanel.style.width = "50%";
+    leftPanel.style.height = "100%";
+    leftPanel.style.borderRight = "1px solid #bbb";
+    leftPanel.style.boxSizing = "border-box";
+    leftPanel.style.background = "#f3f3f3";
+    leftPanel.style.overflow = "hidden";
+
+    var pdfFrame = document.createElement("iframe");
+    pdfFrame.src = pdfFileName;
+    pdfFrame.style.width = "100%";
+    pdfFrame.style.height = "100%";
+    pdfFrame.style.border = "none";
+
+    leftPanel.appendChild(pdfFrame);
+
+    // -------------------------
+    // RIGHT SIDE: QUIZ UI
+    // -------------------------
+    var rightPanel = document.createElement("div");
+    rightPanel.id = rightPanelId;
+    rightPanel.style.width = "50%";
+    rightPanel.style.height = "100%";
+    rightPanel.style.boxSizing = "border-box";
+    rightPanel.style.padding = "20px";
+    rightPanel.style.overflowY = "auto";
+    rightPanel.style.background = "white";
+
+    host.appendChild(leftPanel);
+    host.appendChild(rightPanel);
+    app.appendChild(host);
+
+    return {
+        Host: host,
+        LeftPanel: leftPanel,
+        RightPanel: rightPanel,
+        PdfFrame: pdfFrame
+    };
+};
 
 // ======================================================
 // QuizCode.ProjectileQuiz
@@ -834,6 +903,9 @@ QUIZ_API.ProjectileQuiz = function(id)
 
     this.Width = 700;
     this.Height = 320;
+
+    this.PdfFileName = "";
+    this.UseSplitScreen = true;
 
     // --------------------------------------------------
     // INTERNAL STATE
@@ -864,6 +936,7 @@ QUIZ_API.ProjectileQuiz = function(id)
     var btnNext;
     var svg;
     var chkAutopilot;
+    var rightPanel;
 
     // --------------------------------------------------
     // EVENT REGISTRATION HELPER
@@ -971,6 +1044,17 @@ QUIZ_API.ProjectileQuiz = function(id)
     {
         var v = VisualCode;
 
+        if(self.UseSplitScreen && self.PdfFileName != "")
+        {
+            var split = QUIZ_API.CreateSplitScreen(self.PdfFileName, self.Id + "_rightPanel");
+            rightPanel = split.RightPanel;
+        }
+        else
+        {
+            rightPanel = document.getElementById("app") || document.body;
+            rightPanel.innerHTML = "";
+        }
+
         lblTitle = v.CreateLabel(self.Id + "_title");
         lblTitle.Text = self.Title;
 
@@ -985,15 +1069,38 @@ QUIZ_API.ProjectileQuiz = function(id)
         btnNext = v.CreateButton(self.Id + "_next");
         btnNext.Text = "Next";
 
-        v.Layout.Add(lblTitle);
-        v.Layout.NewLine();
+        // --------------------------------------------------
+        // MANUAL LAYOUT INSIDE RIGHT PANEL
+        // --------------------------------------------------
 
-        v.Layout.Add(ddlAnswer);
-        v.Layout.Add(ddlAngle);
-        v.Layout.Add(chkAutopilot);
-        v.Layout.NewLine();
+        var titleRow = document.createElement("div");
+        titleRow.style.display = "flex";
+        titleRow.style.justifyContent = "center";
+        titleRow.style.alignItems = "center";
+        titleRow.style.margin = "10px 0";
+        titleRow.appendChild(lblTitle._node());
+        rightPanel.appendChild(titleRow);
 
-        v.Layout.Add(btnNext);
+        var row1 = document.createElement("div");
+        row1.style.display = "flex";
+        row1.style.justifyContent = "center";
+        row1.style.alignItems = "center";
+        row1.style.gap = "12px";
+        row1.style.margin = "10px 0";
+        row1.style.flexWrap = "wrap";
+        row1.appendChild(ddlAnswer._node());
+        row1.appendChild(ddlAngle._node());
+        row1.appendChild(chkAutopilot._node());
+        rightPanel.appendChild(row1);
+
+        var row2 = document.createElement("div");
+        row2.style.display = "flex";
+        row2.style.justifyContent = "center";
+        row2.style.alignItems = "center";
+        row2.style.gap = "12px";
+        row2.style.margin = "10px 0";
+        row2.appendChild(btnNext._node());
+        rightPanel.appendChild(row2);
 
         // --------------------------------------------------
         // REGISTER EVENTS (VisualCode style)
@@ -1016,8 +1123,16 @@ QUIZ_API.ProjectileQuiz = function(id)
         svg.style.border = "1px solid #999";
         svg.style.marginTop = "20px";
         svg.style.background = "#f9fbff";
+        svg.style.display = "block";
+        svg.style.maxWidth = "100%";
 
-        document.body.appendChild(svg);
+        var svgWrap = document.createElement("div");
+        svgWrap.style.display = "flex";
+        svgWrap.style.justifyContent = "center";
+        svgWrap.style.marginTop = "20px";
+        svgWrap.appendChild(svg);
+
+        rightPanel.appendChild(svgWrap);
 
         VisualCode.RewireAll();
 
@@ -1498,15 +1613,15 @@ QUIZ_API.ProjectileQuiz = function(id)
                 accuracyText = self.AccuracyScore + " / " + (self.CorrectAnswers.length * 3);
 
             var academicPercent =
-                 Math.round((self.AcademicScore / self.CorrectAnswers.length) * 100);
+                Math.round((self.AcademicScore / self.CorrectAnswers.length) * 100);
 
-     VisualCode.MessageBox(
-    "Quiz finished\n\n" +
-    "Academic Score: " + self.AcademicScore +
-    " / " + self.CorrectAnswers.length +
-    " (" + academicPercent + "%)" +
-    "\nAccuracy Score: " + accuracyText
-);
+            VisualCode.MessageBox(
+                "Quiz finished\n\n" +
+                "Academic Score: " + self.AcademicScore +
+                " / " + self.CorrectAnswers.length +
+                " (" + academicPercent + "%)" +
+                "\nAccuracy Score: " + accuracyText
+            );
             return;
         }
 
@@ -1557,7 +1672,7 @@ QUIZ_API.ProjectileQuiz = function(id)
 // ======================================================
 
 Object.assign(QUIZ_API,{
-    __version:"1.0.1"
+    __version:"1.1.0"
 });
 
 Object.defineProperty(window,"QuizCode",{
@@ -1567,4 +1682,10 @@ Object.defineProperty(window,"QuizCode",{
 });
 
 try{console.log("QuizCode loaded:",QUIZ_API.__version);}catch{}
+
+
+
+
+
+
 
