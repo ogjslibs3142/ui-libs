@@ -749,7 +749,6 @@ ${text}`;
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-
 // ======================================================
 // QuizCode API
 // ------------------------------------------------------
@@ -815,6 +814,10 @@ QUIZ_API.ProjectileQuiz = function(id)
 
     this.TargetDistances = {};
 
+    var LastHit = "";
+    var LastRange = 0;
+    var QuestionAnswered = false;
+
     // --------------------------------------------------
     // INTERNAL CONTROLS
     // --------------------------------------------------
@@ -828,7 +831,7 @@ QUIZ_API.ProjectileQuiz = function(id)
     var btnLaunch;
     var btnNext;
 
-   var lblQuestion;
+    var lblQuestion;
 
     var svg;
 
@@ -848,7 +851,7 @@ QUIZ_API.ProjectileQuiz = function(id)
 
         //lblQuestion = v.CreateLabel(self.Id + "_question");
         //lblQuestion.Text = "Answer to Question #1:";
-       
+
         ddlAnswer = v.CreateDropDown(self.Id + "_answer", ["A","B","C","D"]);
         ddlAnswer.Title = "Q1";
 
@@ -969,6 +972,17 @@ QUIZ_API.ProjectileQuiz = function(id)
         svg.appendChild(t);
     }
 
+    function drawLandingPoint(range, color)
+    {
+        var groundY = 250;
+        var launchX = 60;
+        var scale = 18;
+
+        var x = launchX + range * scale;
+
+        drawCircle(x, groundY - 8, 8, color);
+    }
+
     // --------------------------------------------------
     // DRAW SCENE
     // --------------------------------------------------
@@ -1033,6 +1047,12 @@ QUIZ_API.ProjectileQuiz = function(id)
 
     this.Launch = function()
     {
+        if(QuestionAnswered == true)
+        {
+            VisualCode.MessageBox("This question is already completed. Click Next.");
+            return;
+        }
+
         self.StudentChoice = ddlAnswer.Value;
 
         var angle = parseFloat(txtAngle.Value);
@@ -1049,27 +1069,45 @@ QUIZ_API.ProjectileQuiz = function(id)
             self.RangeFactor *
             Math.sin(2 * angle * Math.PI / 180);
 
-        var hit = self.GetHit(range);
+        LastRange = range;
+        LastHit = self.GetHit(range);
 
-        if(hit == self.StudentChoice)
+        self.DrawScene();
+
+        if(LastHit == "")
         {
-            var correct =
-                self.StudentChoice ==
-                self.CorrectAnswers[self.CurrentQuestionIndex];
-
-            if(correct)
-                self.AcademicScore++;
-
-            self.AccuracyScore +=
-                self.GetAccuracyPoints(self.TryCount);
-
-            VisualCode.MessageBox(
-                correct
-                ? "Correct!"
-                : "Incorrect. Correct answer: " +
-                  self.CorrectAnswers[self.CurrentQuestionIndex]
-            );
+            drawLandingPoint(range, "red");
+            VisualCode.MessageBox("Missed all targets.");
+            return;
         }
+
+        if(LastHit != self.StudentChoice)
+        {
+            drawLandingPoint(range, "orange");
+            VisualCode.MessageBox("You hit " + LastHit + ", not " + self.StudentChoice + ".");
+            return;
+        }
+
+        drawLandingPoint(range, "green");
+
+        var correct =
+            self.StudentChoice ==
+            self.CorrectAnswers[self.CurrentQuestionIndex];
+
+        if(correct)
+            self.AcademicScore++;
+
+        self.AccuracyScore +=
+            self.GetAccuracyPoints(self.TryCount);
+
+        QuestionAnswered = true;
+
+        VisualCode.MessageBox(
+            correct
+            ? "Correct!"
+            : "Incorrect. Correct answer: " +
+              self.CorrectAnswers[self.CurrentQuestionIndex]
+        );
     };
 
     // --------------------------------------------------
@@ -1078,6 +1116,12 @@ QUIZ_API.ProjectileQuiz = function(id)
 
     this.NextQuestion = function()
     {
+        if(QuestionAnswered == false)
+        {
+            VisualCode.MessageBox("Complete this question first.");
+            return;
+        }
+
         self.CurrentQuestionIndex++;
 
         if(self.CurrentQuestionIndex >= self.CorrectAnswers.length)
@@ -1102,9 +1146,13 @@ QUIZ_API.ProjectileQuiz = function(id)
     this.LoadQuestion = function(index)
     {
         /////lblQuestion.Text = "Answer to Question #" + (index + 1) + ":";
-       ddlAnswer.Title = "Q" + (index + 1) + ":";
-       
+        ddlAnswer.Title = "Q" + (index + 1);
+
         self.TryCount = 0;
+
+        LastHit = "";
+        LastRange = 0;
+        QuestionAnswered = false;
 
         self.TargetDistances =
             self.GenerateTargets(index);
@@ -1141,3 +1189,7 @@ Object.defineProperty(window, "QuizCode", {
 });
 
 try { console.log("QuizCode loaded:", QUIZ_API.__version); } catch {}
+
+
+
+
