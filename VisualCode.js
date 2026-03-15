@@ -1,6 +1,6 @@
 /* VisualCode.js
    Class-based teaching UI library
-   Version: 4.4.18  (MessageBox Copy button; SD Step-2 long lines)
+   Version: 4.4.19  (MessageBox Copy button; SD Step-2 long lines)
    Exported global: VisualCode
    This New version includes QuizCode
 */
@@ -734,7 +734,7 @@ ${text}`;
     MessageBox,
     // wiring
     RewireAll,
-    __version: "4.4.18"
+    __version: "4.4.19"
   });
 
   Object.defineProperty(window, "VisualCode", { value: API, writable: false, configurable: false });
