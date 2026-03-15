@@ -1037,8 +1037,7 @@ QUIZ_API.ProjectileQuiz = function(id)
 
     this.Launch=function()
     {
-        alert("Launch clicked");
-
+        
         if(QuestionAnswered)
         {
             VisualCode.MessageBox("This question is already completed.");
