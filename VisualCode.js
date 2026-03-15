@@ -1,6 +1,6 @@
 /* VisualCode.js
    Class-based teaching UI library
-   Version: 4.4.26  (MessageBox Copy button; SD Step-2 long lines)
+   Version: 4.4.27  (MessageBox Copy button; SD Step-2 long lines)
    Exported global: VisualCode
    This New version includes QuizCode
 */
@@ -912,6 +912,7 @@ QUIZ_API.ProjectileQuiz = function(id)
 
         v.Layout.Add(ddlAnswer);
         v.Layout.Add(ddlAngle);
+        v.Layout.Add(chkAutopilot);
         v.Layout.NewLine();
 
         v.Layout.Add(btnNext);
