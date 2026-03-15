@@ -1,6 +1,6 @@
 /* VisualCode.js
    Class-based teaching UI library
-   Version: 4.4.36  (Added CreateCheckbox)
+   Version: 4.4.37  (Added CreateCheckbox)
    Exported global: VisualCode
    This New version includes QuizCode
 */
@@ -780,7 +780,7 @@ ${text}`;
     MessageBox,
     // wiring
     RewireAll,
-    __version: "4.4.36"
+    __version: "4.4.37"
   });
 
   Object.defineProperty(window, "VisualCode", { value: API, writable: false, configurable: false });
@@ -793,7 +793,6 @@ ${text}`;
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 
 // ======================================================
 // QuizCode API
@@ -867,6 +866,7 @@ QUIZ_API.ProjectileQuiz = function(id)
     var ddlAngle;
     var btnNext;
     var btnOpenExam;
+    var btnCopyExamUrl;
     var svg;
     var chkAutopilot;
     var hostPanel;
@@ -984,10 +984,15 @@ QUIZ_API.ProjectileQuiz = function(id)
         lblTitle.Text = self.Title;
 
         btnOpenExam = null;
+        btnCopyExamUrl = null;
+
         if(self.PdfFileName != "")
         {
             btnOpenExam = v.CreateButton(self.Id + "_openexam");
             btnOpenExam.Text = "Open Exam";
+
+            btnCopyExamUrl = v.CreateButton(self.Id + "_copyexamurl");
+            btnCopyExamUrl.Text = "Copy Exam URL";
         }
 
         ddlAnswer = v.CreateDropDown(self.Id + "_answer", ["", "A", "B", "C", "D"]);
@@ -1016,6 +1021,9 @@ QUIZ_API.ProjectileQuiz = function(id)
 
         if(btnOpenExam)
             titleRow.appendChild(btnOpenExam._node());
+
+        if(btnCopyExamUrl)
+            titleRow.appendChild(btnCopyExamUrl._node());
 
         hostPanel.appendChild(titleRow);
 
@@ -1053,7 +1061,29 @@ QUIZ_API.ProjectileQuiz = function(id)
         {
             registerClick(self.Id + "_openexam", function()
             {
-                window.open(self.PdfFileName, "_blank", "noopener");
+                var a = document.createElement("a");
+                a.href = self.PdfFileName;
+                a.target = "_blank";
+                a.rel = "noopener noreferrer";
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            });
+        }
+
+        if(btnCopyExamUrl)
+        {
+            registerClick(self.Id + "_copyexamurl", async function()
+            {
+                try
+                {
+                    await navigator.clipboard.writeText(self.PdfFileName);
+                    VisualCode.MessageBox("Exam URL copied.\nPaste it into a new tab.");
+                }
+                catch
+                {
+                    VisualCode.MessageBox("Could not copy automatically.\n\n" + self.PdfFileName);
+                }
             });
         }
 
@@ -1584,8 +1614,6 @@ QUIZ_API.ProjectileQuiz = function(id)
         ddlAnswer.Value = "";
         ddlAngle.Value = "";
 
-        // preserve chkAutopilot.Checked state
-
         self.TryCount = 0;
 
         LastHit = "";
@@ -1618,7 +1646,7 @@ QUIZ_API.ProjectileQuiz = function(id)
 // ======================================================
 
 Object.assign(QUIZ_API,{
-    __version:"1.2.0"
+    __version:"1.2.1"
 });
 
 Object.defineProperty(window,"QuizCode",{
@@ -1628,7 +1656,6 @@ Object.defineProperty(window,"QuizCode",{
 });
 
 try{console.log("QuizCode loaded:",QUIZ_API.__version);}catch{}
-
 
 
 
