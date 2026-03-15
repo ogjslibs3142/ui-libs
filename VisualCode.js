@@ -1,6 +1,6 @@
 /* VisualCode.js
    Class-based teaching UI library
-   Version: 4.4.30  (MessageBox Copy button; SD Step-2 long lines)
+   Version: 4.4.31  (Added CreateCheckbox)
    Exported global: VisualCode
    This New version includes QuizCode
 */
@@ -19,6 +19,7 @@
     select: "font:1rem system-ui, sans-serif;padding:8px;",
     radioWrap: "display:flex;flex-wrap:wrap;gap:12px;justify-content:center;",
     radioLabel: "font:1rem system-ui, sans-serif;display:flex;align-items:center;gap:6px;",
+    checkboxLabel: "font:1rem system-ui, sans-serif;display:flex;align-items:center;gap:8px;cursor:pointer;",
     image: "max-width:90%;height:auto;display:block;"
   };
 
@@ -238,6 +239,48 @@
     set Items(items){ const arr = toArray(items); this.el.innerHTML = ""; arr.forEach(opt => { const o = document.createElement("option"); o.value = opt; o.textContent = opt; this.el.appendChild(o); }); }
     set Value(v){ this.el.value = v; } get Value(){ return this.el.value; }
   }
+  class Checkbox extends Control {
+    constructor(text = "", checked = false) {
+      const lab = document.createElement("label");
+      lab.setAttribute("style", styles.checkboxLabel);
+
+      const box = document.createElement("input");
+      box.type = "checkbox";
+      box.checked = !!checked;
+
+      const span = document.createElement("span");
+      span.textContent = text ?? "";
+
+      lab.appendChild(box);
+      lab.appendChild(span);
+
+      super(lab, "change");
+
+      this.box = box;
+      this.caption = span;
+    }
+
+    set Id(v) {
+      this._id = v || "";
+      if (this.box) this.box.id = this._id;
+      autoWireDefault(this.box, this._id, this._defaultEvent);
+      autoWireAllByConvention(this.box, this._id);
+    }
+    get Id() { return this._id; }
+
+    set Text(v) { this.caption.textContent = v ?? ""; }
+    get Text() { return this.caption.textContent; }
+
+    set Checked(v) { this.box.checked = !!v; }
+    get Checked() { return this.box.checked; }
+
+    set Value(v) { this.box.checked = !!v; }
+    get Value() { return this.box.checked; }
+
+    on(event, handler) { this.box.addEventListener(event, handler); return this; }
+
+    _node() { return this._wrap || this.el; }
+  }
   class RadioList extends Control {
     constructor(items = [], value = null) {
       const wrap = document.createElement("div"); wrap.setAttribute("style", styles.radioWrap);
@@ -289,6 +332,7 @@
   function CreateTextBox(id, value = "") { const c = new TextBox(value); if (id) c.Id = id; __maybeFlowAppend(c); return c; }
   function CreateScrollBar(id, opts = {}) { const c = new ScrollBar(opts); if (id) c.Id = id; __maybeFlowAppend(c); return c; }
   function CreateDropDown(id, items = [], value = null) { const c = new DropDown(items, value); if (id) c.Id = id; __maybeFlowAppend(c); return c; }
+  function CreateCheckbox(id, text = "", checked = false) { const c = new Checkbox(text, checked); if (id) c.Id = id; __maybeFlowAppend(c); return c; }
   function CreateRadioList(id, items = [], value = null) { const c = new RadioList(items, value); if (id) c.Id = id; __maybeFlowAppend(c); return c; }
   function CreateImage(id, src = "", opts = {}) { const c = new ImageCtrl(src, opts); if (id) c.Id = id; __maybeFlowAppend(c); return c; }
 
@@ -306,6 +350,7 @@
   // ---------- generic get/set by id ----------
   function SetValue(id, value) {
     const el = document.getElementById(id); if (!el) return;
+    if (el.type === "checkbox") { el.checked = !!value; return; }
     if (el.tagName === "DIV" && el.querySelector('input[type="radio"]')) {
       const r = el.querySelector(`input[type="radio"][value="${CSS.escape(String(value))}"]`); if (r) r.checked = true; return;
     }
@@ -315,6 +360,7 @@
   }
   function GetValue(id) {
     const el = document.getElementById(id); if (!el) return null;
+    if (el.type === "checkbox") return el.checked;
     if (el.tagName === "DIV" && el.querySelector('input[type="radio"]')) {
       const r = el.querySelector('input[type="radio"]:checked'); return r ? r.value : null;
     }
@@ -719,7 +765,7 @@ ${text}`;
     // layout
     Layout, NewLine: () => Layout.NewLine(), Add: c => Layout.Add(c),
     // factories
-    CreateLabel, CreateButton, CreateTextBox, CreateScrollBar, CreateDropDown, CreateRadioList, CreateImage,
+    CreateLabel, CreateButton, CreateTextBox, CreateScrollBar, CreateDropDown, CreateCheckbox, CreateRadioList, CreateImage,
     Create,
     // helpers
     SetPageTitle, SetPageColor, GetValue, SetValue, SetStyle,
@@ -734,7 +780,7 @@ ${text}`;
     MessageBox,
     // wiring
     RewireAll,
-    __version: "4.4.30"
+    __version: "4.4.31"
   });
 
   Object.defineProperty(window, "VisualCode", { value: API, writable: false, configurable: false });
