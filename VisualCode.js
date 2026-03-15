@@ -1,6 +1,6 @@
 /* VisualCode.js
    Class-based teaching UI library
-   Version: 4.4.32  (Added CreateCheckbox)
+   Version: 4.4.33  (Added CreateCheckbox)
    Exported global: VisualCode
    This New version includes QuizCode
 */
@@ -780,7 +780,7 @@ ${text}`;
     MessageBox,
     // wiring
     RewireAll,
-    __version: "4.4.32"
+    __version: "4.4.33"
   });
 
   Object.defineProperty(window, "VisualCode", { value: API, writable: false, configurable: false });
@@ -1497,12 +1497,16 @@ QUIZ_API.ProjectileQuiz = function(id)
             else
                 accuracyText = self.AccuracyScore + " / " + (self.CorrectAnswers.length * 3);
 
-            VisualCode.MessageBox(
-                "Quiz finished\n\n"+
-                "Academic Score: " + self.AcademicScore +
-                " / " + self.CorrectAnswers.length +
-                "\nAccuracy Score: " + accuracyText
-            );
+            var academicPercent =
+                 Math.round((self.AcademicScore / self.CorrectAnswers.length) * 100);
+
+     VisualCode.MessageBox(
+    "Quiz finished\n\n" +
+    "Academic Score: " + self.AcademicScore +
+    " / " + self.CorrectAnswers.length +
+    " (" + academicPercent + "%)" +
+    "\nAccuracy Score: " + accuracyText
+);
             return;
         }
 
