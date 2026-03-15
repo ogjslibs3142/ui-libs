@@ -748,6 +748,7 @@ ${text}`;
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+
 // ======================================================
 // QuizCode API
 // ------------------------------------------------------
@@ -806,6 +807,7 @@ QUIZ_API.ProjectileQuiz = function(id)
     var LastHit = "";
     var LastRange = 0;
     var QuestionAnswered = false;
+    var IsAnimating = false;
 
     // --------------------------------------------------
     // INTERNAL CONTROLS
@@ -855,7 +857,7 @@ QUIZ_API.ProjectileQuiz = function(id)
 
     function updateLaunchState()
     {
-        if(QuestionAnswered)
+        if(QuestionAnswered || IsAnimating)
         {
             setLaunchEnabled(false);
             return;
@@ -937,8 +939,18 @@ QUIZ_API.ProjectileQuiz = function(id)
         ddlAnswer.Value = "";
         txtAngle.Value = "";
 
-        document.addEventListener("change", updateLaunchState);
-        document.addEventListener("keyup", updateLaunchState);
+        var answerElement = document.getElementById(self.Id + "_answer");
+        var angleElement = document.getElementById(self.Id + "_angle");
+
+        if(answerElement)
+            answerElement.addEventListener("change", updateLaunchState);
+
+        if(angleElement)
+        {
+            angleElement.addEventListener("keyup", updateLaunchState);
+            angleElement.addEventListener("change", updateLaunchState);
+            angleElement.addEventListener("input", updateLaunchState);
+        }
 
         setLaunchEnabled(false);
         setNextEnabled(false);
@@ -1025,7 +1037,7 @@ QUIZ_API.ProjectileQuiz = function(id)
         drawCircle(x, groundY - 8, 8, color);
     }
 
-    function drawProjectileArc(angle, range, color)
+    function getArcPoints(angle, range, progress)
     {
         var groundY = 250;
         var launchX = 60;
@@ -1035,7 +1047,7 @@ QUIZ_API.ProjectileQuiz = function(id)
         var xEnd = launchX + range * scale;
 
         if(xEnd <= xStart)
-            return;
+            return [];
 
         var radians = angle * Math.PI / 180;
 
@@ -1047,26 +1059,88 @@ QUIZ_API.ProjectileQuiz = function(id)
 
         var points = [];
         var steps = 40;
+        var maxStep = Math.max(1, Math.floor(steps * progress));
 
-        for(var i = 0; i <= steps; i++)
+        for(var i = 0; i <= maxStep; i++)
         {
             var t = i / steps;
             var x = xStart + (xEnd - xStart) * t;
 
-            // Parabolic arc: 0 at both ends, maximum at middle
             var arcY = 4 * apexHeight * t * (1 - t);
             var y = groundY - arcY;
 
-            points.push(x + "," + y);
+            points.push({ x: x, y: y });
         }
 
+        return points;
+    }
+
+    function drawProjectileArcPartial(angle, range, color, progress)
+    {
+        var points = getArcPoints(angle, range, progress);
+
+        if(points.length < 2)
+            return;
+
+        var pointStrings = [];
+
+        for(var i = 0; i < points.length; i++)
+            pointStrings.push(points[i].x + "," + points[i].y);
+
         var polyline = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
-        polyline.setAttribute("points", points.join(" "));
+        polyline.setAttribute("points", pointStrings.join(" "));
         polyline.setAttribute("fill", "none");
         polyline.setAttribute("stroke", color);
         polyline.setAttribute("stroke-width", "2");
 
         svg.appendChild(polyline);
+    }
+
+    function animateProjectile(angle, range, endColor, onComplete)
+    {
+        var startTime = null;
+        var duration = 700;
+
+        IsAnimating = true;
+        setLaunchEnabled(false);
+        setNextEnabled(false);
+
+        function step(timestamp)
+        {
+            if(startTime == null)
+                startTime = timestamp;
+
+            var elapsed = timestamp - startTime;
+            var progress = elapsed / duration;
+
+            if(progress > 1)
+                progress = 1;
+
+            self.DrawScene();
+            drawProjectileArcPartial(angle, range, "#2b6cff", progress);
+
+            var points = getArcPoints(angle, range, progress);
+            if(points.length > 0)
+            {
+                var p = points[points.length - 1];
+                drawCircle(p.x, p.y, 5, "#2b6cff");
+            }
+
+            if(progress < 1)
+            {
+                requestAnimationFrame(step);
+                return;
+            }
+
+            self.DrawScene();
+            drawProjectileArcPartial(angle, range, "#2b6cff", 1);
+            drawLandingPoint(range, endColor);
+
+            IsAnimating = false;
+            onComplete();
+        }
+
+        requestAnimationFrame(step);
     }
 
     // --------------------------------------------------
@@ -1138,6 +1212,9 @@ QUIZ_API.ProjectileQuiz = function(id)
             return;
         }
 
+        if(IsAnimating)
+            return;
+
         self.StudentChoice = ddlAnswer.Value;
 
         if(self.StudentChoice == "")
@@ -1161,43 +1238,47 @@ QUIZ_API.ProjectileQuiz = function(id)
         LastRange = range;
         LastHit = self.GetHit(range);
 
-        self.DrawScene();
-        drawProjectileArc(angle, range, "#2b6cff");
-
+        var endColor = "green";
         if(LastHit == "")
+            endColor = "red";
+        else if(LastHit != self.StudentChoice)
+            endColor = "orange";
+
+        animateProjectile(angle, range, endColor, function()
         {
-            drawLandingPoint(range,"red");
-            VisualCode.MessageBox("Missed all targets.");
-            return;
-        }
+            if(LastHit == "")
+            {
+                updateLaunchState();
+                VisualCode.MessageBox("Missed all targets.");
+                return;
+            }
 
-        if(LastHit != self.StudentChoice)
-        {
-            drawLandingPoint(range,"orange");
-            VisualCode.MessageBox("You hit " + LastHit + ", not " + self.StudentChoice);
-            return;
-        }
+            if(LastHit != self.StudentChoice)
+            {
+                updateLaunchState();
+                VisualCode.MessageBox("You hit " + LastHit + ", not " + self.StudentChoice);
+                return;
+            }
 
-        drawLandingPoint(range,"green");
+            var correct = self.StudentChoice ==
+                self.CorrectAnswers[self.CurrentQuestionIndex];
 
-        var correct = self.StudentChoice ==
-            self.CorrectAnswers[self.CurrentQuestionIndex];
+            if(correct)
+                self.AcademicScore++;
 
-        if(correct)
-            self.AcademicScore++;
+            self.AccuracyScore += self.GetAccuracyPoints(self.TryCount);
 
-        self.AccuracyScore += self.GetAccuracyPoints(self.TryCount);
+            QuestionAnswered = true;
+            setLaunchEnabled(false);
+            setNextEnabled(true);
 
-        QuestionAnswered = true;
-        setLaunchEnabled(false);
-        setNextEnabled(true);
-
-        VisualCode.MessageBox(
-            correct ?
-            "Correct!" :
-            "Incorrect. Correct answer: " +
-            self.CorrectAnswers[self.CurrentQuestionIndex]
-        );
+            VisualCode.MessageBox(
+                correct ?
+                "Correct!" :
+                "Incorrect. Correct answer: " +
+                self.CorrectAnswers[self.CurrentQuestionIndex]
+            );
+        });
     };
 
     // --------------------------------------------------
@@ -1243,6 +1324,7 @@ QUIZ_API.ProjectileQuiz = function(id)
         LastHit = "";
         LastRange = 0;
         QuestionAnswered = false;
+        IsAnimating = false;
 
         setLaunchEnabled(false);
         setNextEnabled(false);
@@ -1250,6 +1332,7 @@ QUIZ_API.ProjectileQuiz = function(id)
         self.TargetDistances = self.GenerateTargets(index);
 
         self.DrawScene();
+        updateLaunchState();
     };
 
     // --------------------------------------------------
@@ -1279,8 +1362,4 @@ Object.defineProperty(window,"QuizCode",{
 });
 
 try{console.log("QuizCode loaded:",QUIZ_API.__version);}catch{}
-
-
-
-
 
