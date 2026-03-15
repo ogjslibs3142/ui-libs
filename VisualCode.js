@@ -1,6 +1,6 @@
 /* VisualCode.js
    Class-based teaching UI library
-   Version: 4.4.31  (Added CreateCheckbox)
+   Version: 4.4.32  (Added CreateCheckbox)
    Exported global: VisualCode
    This New version includes QuizCode
 */
@@ -780,7 +780,7 @@ ${text}`;
     MessageBox,
     // wiring
     RewireAll,
-    __version: "4.4.31"
+    __version: "4.4.32"
   });
 
   Object.defineProperty(window, "VisualCode", { value: API, writable: false, configurable: false });
@@ -793,7 +793,6 @@ ${text}`;
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 
 // ======================================================
 // QuizCode API
@@ -864,10 +863,7 @@ QUIZ_API.ProjectileQuiz = function(id)
     var ddlAngle;
     var btnNext;
     var svg;
-
     var chkAutopilot;
-    var lblAutopilot;
-    var autopilotWrap;
 
     // --------------------------------------------------
     // EVENT REGISTRATION HELPER
@@ -917,16 +913,18 @@ QUIZ_API.ProjectileQuiz = function(id)
 
     function setAutopilotEnabled(bEnabled)
     {
-        if(!chkAutopilot) return;
+        var e = document.getElementById(self.Id + "_autopilot");
 
-        chkAutopilot.disabled = !bEnabled;
-        chkAutopilot.style.opacity = bEnabled ? "1" : "0.45";
-        chkAutopilot.style.cursor = bEnabled ? "pointer" : "default";
+        if(!e) return;
 
-        if(lblAutopilot)
+        e.disabled = !bEnabled;
+        e.style.opacity = bEnabled ? "1" : "0.45";
+        e.style.cursor = bEnabled ? "pointer" : "default";
+
+        if(chkAutopilot && chkAutopilot.el)
         {
-            lblAutopilot.style.opacity = bEnabled ? "1" : "0.45";
-            lblAutopilot.style.cursor = bEnabled ? "pointer" : "default";
+            chkAutopilot.el.style.opacity = bEnabled ? "1" : "0.45";
+            chkAutopilot.el.style.cursor = bEnabled ? "pointer" : "default";
         }
     }
 
@@ -945,7 +943,7 @@ QUIZ_API.ProjectileQuiz = function(id)
         setAnswerEnabled(true);
         setAutopilotEnabled(true);
 
-        if(chkAutopilot.checked)
+        if(chkAutopilot.Checked)
             setAngleEnabled(false);
         else
             setAngleEnabled(true);
@@ -982,6 +980,8 @@ QUIZ_API.ProjectileQuiz = function(id)
         ddlAngle = v.CreateDropDown(self.Id + "_angle", getAngleItems());
         ddlAngle.Title = "Angle";
 
+        chkAutopilot = v.CreateCheckbox(self.Id + "_autopilot", "Autopilot", true);
+
         btnNext = v.CreateButton(self.Id + "_next");
         btnNext.Text = "Next";
 
@@ -990,6 +990,7 @@ QUIZ_API.ProjectileQuiz = function(id)
 
         v.Layout.Add(ddlAnswer);
         v.Layout.Add(ddlAngle);
+        v.Layout.Add(chkAutopilot);
         v.Layout.NewLine();
 
         v.Layout.Add(btnNext);
@@ -1016,30 +1017,6 @@ QUIZ_API.ProjectileQuiz = function(id)
         svg.style.marginTop = "20px";
         svg.style.background = "#f9fbff";
 
-        // --------------------------------------------------
-        // AUTOPILOT CHECKBOX (plain DOM)
-        // --------------------------------------------------
-
-        chkAutopilot = document.createElement("input");
-        chkAutopilot.type = "checkbox";
-        chkAutopilot.id = self.Id + "_autopilot";
-        chkAutopilot.checked = true;
-
-        lblAutopilot = document.createElement("label");
-        lblAutopilot.htmlFor = chkAutopilot.id;
-        lblAutopilot.textContent = " Autopilot";
-        lblAutopilot.style.marginLeft = "6px";
-
-        autopilotWrap = document.createElement("div");
-        autopilotWrap.style.position = "relative";
-        autopilotWrap.style.marginTop = "-56px";
-        autopilotWrap.style.marginLeft = "355px";
-        autopilotWrap.style.marginBottom = "20px";
-        autopilotWrap.style.display = "inline-block";
-        autopilotWrap.appendChild(chkAutopilot);
-        autopilotWrap.appendChild(lblAutopilot);
-
-        document.body.appendChild(autopilotWrap);
         document.body.appendChild(svg);
 
         VisualCode.RewireAll();
@@ -1049,6 +1026,7 @@ QUIZ_API.ProjectileQuiz = function(id)
 
         var answerElement = document.getElementById(self.Id + "_answer");
         var angleElement = document.getElementById(self.Id + "_angle");
+        var autopilotElement = document.getElementById(self.Id + "_autopilot");
 
         if(answerElement)
         {
@@ -1056,7 +1034,7 @@ QUIZ_API.ProjectileQuiz = function(id)
             {
                 self.DrawScene();
 
-                if(chkAutopilot && chkAutopilot.checked && ddlAnswer.Value != "" && !QuestionAnswered && !IsAnimating)
+                if(chkAutopilot && chkAutopilot.Checked && ddlAnswer.Value != "" && !QuestionAnswered && !IsAnimating)
                     self.Launch();
             });
         }
@@ -1065,20 +1043,20 @@ QUIZ_API.ProjectileQuiz = function(id)
         {
             angleElement.addEventListener("change", function()
             {
-                if(chkAutopilot && chkAutopilot.checked)
+                if(chkAutopilot && chkAutopilot.Checked)
                     return;
 
                 self.Launch();
             });
         }
 
-        if(chkAutopilot)
+        if(autopilotElement)
         {
-            chkAutopilot.addEventListener("change", function()
+            autopilotElement.addEventListener("change", function()
             {
                 updateAngleState();
 
-                if(chkAutopilot.checked && ddlAnswer.Value != "" && !QuestionAnswered && !IsAnimating)
+                if(chkAutopilot.Checked && ddlAnswer.Value != "" && !QuestionAnswered && !IsAnimating)
                     self.Launch();
             });
         }
@@ -1416,7 +1394,7 @@ QUIZ_API.ProjectileQuiz = function(id)
         var angle;
         var usedAutopilotThisShot = false;
 
-        if(chkAutopilot && chkAutopilot.checked)
+        if(chkAutopilot && chkAutopilot.Checked)
         {
             angle = getAutopilotAngleForChoice(self.StudentChoice);
             usedAutopilotThisShot = true;
@@ -1541,7 +1519,7 @@ QUIZ_API.ProjectileQuiz = function(id)
         ddlAnswer.Value = "";
         ddlAngle.Value = "";
 
-        // preserve chkAutopilot.checked state
+        // preserve chkAutopilot.Checked state
 
         self.TryCount = 0;
 
@@ -1575,7 +1553,7 @@ QUIZ_API.ProjectileQuiz = function(id)
 // ======================================================
 
 Object.assign(QUIZ_API,{
-    __version:"1.0.0"
+    __version:"1.0.1"
 });
 
 Object.defineProperty(window,"QuizCode",{
@@ -1585,5 +1563,4 @@ Object.defineProperty(window,"QuizCode",{
 });
 
 try{console.log("QuizCode loaded:",QUIZ_API.__version);}catch{}
-
 
