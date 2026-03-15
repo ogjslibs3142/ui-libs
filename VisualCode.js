@@ -1,6 +1,6 @@
 /* VisualCode.js
    Class-based teaching UI library
-   Version: 4.4.25  (MessageBox Copy button; SD Step-2 long lines)
+   Version: 4.4.26  (MessageBox Copy button; SD Step-2 long lines)
    Exported global: VisualCode
    This New version includes QuizCode
 */
@@ -734,7 +734,7 @@ ${text}`;
     MessageBox,
     // wiring
     RewireAll,
-    __version: "4.4.25"
+    __version: "4.4.26"
   });
 
   Object.defineProperty(window, "VisualCode", { value: API, writable: false, configurable: false });
@@ -1265,6 +1265,34 @@ QUIZ_API.ProjectileQuiz = function(id)
         return "";
     };
 
+    this.GetSelectedTargetHit = function(angle, range)
+    {
+        var selected = ddlAnswer.Value;
+
+        if(selected == "")
+            return "";
+
+        var launchX = 60;
+        var scale = 18;
+
+        var targetX = launchX + self.TargetDistances[selected] * scale;
+        var targetY = 220;
+        var targetRadius = 18;
+
+        var points = getArcPoints(angle, range, 1);
+
+        for(var i = 0; i < points.length; i++)
+        {
+            var dx = points[i].x - targetX;
+            var dy = points[i].y - targetY;
+
+            if(dx * dx + dy * dy <= targetRadius * targetRadius)
+                return selected;
+        }
+
+        return "";
+    };
+
     // --------------------------------------------------
     // ACCURACY SCORING
     // --------------------------------------------------
@@ -1345,7 +1373,7 @@ QUIZ_API.ProjectileQuiz = function(id)
         var range = self.RangeFactor * Math.sin(2 * angle * Math.PI / 180);
 
         LastRange = range;
-        LastHit = self.GetHit(range);
+        LastHit = self.GetSelectedTargetHit(angle, range);
 
         if(usedAutopilotThisShot)
             LastHit = self.StudentChoice;
@@ -1487,6 +1515,4 @@ Object.defineProperty(window,"QuizCode",{
 });
 
 try{console.log("QuizCode loaded:",QUIZ_API.__version);}catch{}
-
-
 
