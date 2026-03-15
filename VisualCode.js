@@ -1,6 +1,6 @@
 /* VisualCode.js
    Class-based teaching UI library
-   Version: 4.4.33  (Added CreateCheckbox)
+   Version: 4.4.34  (Added CreateCheckbox)
    Exported global: VisualCode
    This New version includes QuizCode
 */
@@ -780,7 +780,7 @@ ${text}`;
     MessageBox,
     // wiring
     RewireAll,
-    __version: "4.4.33"
+    __version: "4.4.34"
   });
 
   Object.defineProperty(window, "VisualCode", { value: API, writable: false, configurable: false });
