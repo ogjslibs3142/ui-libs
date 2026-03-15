@@ -734,7 +734,7 @@ ${text}`;
     MessageBox,
     // wiring
     RewireAll,
-    __version: "4.4.13"
+    __version: "4.4.14"
   });
 
   Object.defineProperty(window, "VisualCode", { value: API, writable: false, configurable: false });
@@ -899,7 +899,8 @@ QUIZ_API.ProjectileQuiz = function(id)
         svg.style.marginTop = "20px";
         svg.style.background = "#f9fbff";
 
-        document.body.appendChild(svg);
+       document.body.appendChild(svg);
+       VisualCode.RewireAll();
     };
 
     // --------------------------------------------------
