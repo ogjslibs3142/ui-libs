@@ -734,7 +734,7 @@ ${text}`;
     MessageBox,
     // wiring
     RewireAll,
-    __version: "4.4.26"
+    __version: "4.4.27"
   });
 
   Object.defineProperty(window, "VisualCode", { value: API, writable: false, configurable: false });
