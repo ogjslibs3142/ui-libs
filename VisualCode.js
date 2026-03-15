@@ -734,7 +734,7 @@ ${text}`;
     MessageBox,
     // wiring
     RewireAll,
-    __version: "4.4.14"
+    __version: "4.4.15"
   });
 
   Object.defineProperty(window, "VisualCode", { value: API, writable: false, configurable: false });
@@ -765,12 +765,11 @@ ${text}`;
 //
 // ======================================================
 
+// QuizCode API
 const QUIZ_API = {};
 
 // ======================================================
 // QuizCode.ProjectileQuiz
-// ------------------------------------------------------
-// Minimal API quiz engine using projectile motion.
 // ======================================================
 
 QUIZ_API.ProjectileQuiz = function(id)
@@ -778,25 +777,16 @@ QUIZ_API.ProjectileQuiz = function(id)
     var self = this;
 
     // --------------------------------------------------
-    // PUBLIC PROPERTIES (coder can set)
+    // PUBLIC PROPERTIES
     // --------------------------------------------------
 
     this.Id = id;
-
     this.Title = "Projectile Quiz";
-
-    this.Instructions =
-    "Choose the answer you believe is correct.\n" +
-    "Enter a launch angle until you hit that target.";
 
     this.CorrectAnswers = [];
 
-    // Physics parameters
-
     this.RangeFactor = 40;
     this.HitTolerance = 2;
-
-    // Visual parameters
 
     this.Width = 700;
     this.Height = 320;
@@ -823,17 +813,20 @@ QUIZ_API.ProjectileQuiz = function(id)
     // --------------------------------------------------
 
     var lblTitle;
-    var lblInstructions;
-
     var ddlAnswer;
     var txtAngle;
-
     var btnLaunch;
     var btnNext;
-
-    var lblQuestion;
-
     var svg;
+
+    // --------------------------------------------------
+    // EVENT REGISTRATION HELPER
+    // --------------------------------------------------
+
+    function registerClick(controlId, handler)
+    {
+        window[controlId + "_click"] = handler;
+    }
 
     // --------------------------------------------------
     // CREATE UI
@@ -845,12 +838,6 @@ QUIZ_API.ProjectileQuiz = function(id)
 
         lblTitle = v.CreateLabel(self.Id + "_title");
         lblTitle.Text = self.Title;
-
-        ////lblInstructions = v.CreateLabel(self.Id + "_instructions");
-        ////lblInstructions.Text = self.Instructions;
-
-        //lblQuestion = v.CreateLabel(self.Id + "_question");
-        //lblQuestion.Text = "Answer to Question #1:";
 
         ddlAnswer = v.CreateDropDown(self.Id + "_answer", ["A","B","C","D"]);
         ddlAnswer.Title = "Q1";
@@ -867,10 +854,6 @@ QUIZ_API.ProjectileQuiz = function(id)
         v.Layout.Add(lblTitle);
         v.Layout.NewLine();
 
-        //v.Layout.Add(lblInstructions);
-        //v.Layout.NewLine();
-
-        //v.Layout.Add(lblQuestion);
         v.Layout.Add(ddlAnswer);
         v.Layout.Add(txtAngle);
         v.Layout.NewLine();
@@ -878,17 +861,23 @@ QUIZ_API.ProjectileQuiz = function(id)
         v.Layout.Add(btnLaunch);
         v.Layout.Add(btnNext);
 
-        btnLaunch.Click = function()
+        // --------------------------------------------------
+        // REGISTER EVENTS (VisualCode style)
+        // --------------------------------------------------
+
+        registerClick(self.Id + "_launch", function()
         {
             self.Launch();
-        };
+        });
 
-        btnNext.Click = function()
+        registerClick(self.Id + "_next", function()
         {
             self.NextQuestion();
-        };
+        });
 
-        // Create SVG drawing area
+        // --------------------------------------------------
+        // SVG DRAW AREA
+        // --------------------------------------------------
 
         svg = document.createElementNS("http://www.w3.org/2000/svg","svg");
 
@@ -899,8 +888,9 @@ QUIZ_API.ProjectileQuiz = function(id)
         svg.style.marginTop = "20px";
         svg.style.background = "#f9fbff";
 
-       document.body.appendChild(svg);
-       VisualCode.RewireAll();
+        document.body.appendChild(svg);
+
+        VisualCode.RewireAll();
     };
 
     // --------------------------------------------------
@@ -929,51 +919,51 @@ QUIZ_API.ProjectileQuiz = function(id)
             svg.removeChild(svg.firstChild);
     }
 
-    function drawLine(x1, y1, x2, y2, color)
+    function drawLine(x1,y1,x2,y2,color)
     {
-        var line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        var line = document.createElementNS("http://www.w3.org/2000/svg","line");
 
-        line.setAttribute("x1", x1);
-        line.setAttribute("y1", y1);
-        line.setAttribute("x2", x2);
-        line.setAttribute("y2", y2);
+        line.setAttribute("x1",x1);
+        line.setAttribute("y1",y1);
+        line.setAttribute("x2",x2);
+        line.setAttribute("y2",y2);
 
-        line.setAttribute("stroke", color);
-        line.setAttribute("stroke-width", "2");
+        line.setAttribute("stroke",color);
+        line.setAttribute("stroke-width","2");
 
         svg.appendChild(line);
     }
 
-    function drawCircle(x, y, r, color)
+    function drawCircle(x,y,r,color)
     {
-        var c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        var c = document.createElementNS("http://www.w3.org/2000/svg","circle");
 
-        c.setAttribute("cx", x);
-        c.setAttribute("cy", y);
-        c.setAttribute("r", r);
+        c.setAttribute("cx",x);
+        c.setAttribute("cy",y);
+        c.setAttribute("r",r);
 
-        c.setAttribute("fill", color);
-        c.setAttribute("stroke", "black");
+        c.setAttribute("fill",color);
+        c.setAttribute("stroke","black");
 
         svg.appendChild(c);
     }
 
-    function drawText(x, y, text)
+    function drawText(x,y,text)
     {
-        var t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        var t = document.createElementNS("http://www.w3.org/2000/svg","text");
 
-        t.setAttribute("x", x);
-        t.setAttribute("y", y);
+        t.setAttribute("x",x);
+        t.setAttribute("y",y);
 
-        t.setAttribute("text-anchor", "middle");
-        t.setAttribute("font-size", "16");
+        t.setAttribute("text-anchor","middle");
+        t.setAttribute("font-size","16");
 
         t.textContent = text;
 
         svg.appendChild(t);
     }
 
-    function drawLandingPoint(range, color)
+    function drawLandingPoint(range,color)
     {
         var groundY = 250;
         var launchX = 60;
@@ -996,22 +986,21 @@ QUIZ_API.ProjectileQuiz = function(id)
         var launchX = 60;
         var scale = 18;
 
-        drawLine(20, groundY, self.Width - 20, groundY, "#333");
+        drawLine(20,groundY,self.Width-20,groundY,"#333");
 
-        drawCircle(launchX, groundY, 10, "#666");
+        drawCircle(launchX,groundY,10,"#666");
 
-        var letters = ["A", "B", "C", "D"];
+        var letters=["A","B","C","D"];
 
-        for(var i = 0; i < 4; i++)
+        for(var i=0;i<4;i++)
         {
-            var letter = letters[i];
-            var dist = self.TargetDistances[letter];
+            var letter=letters[i];
+            var dist=self.TargetDistances[letter];
 
-            var x = launchX + dist * scale;
+            var x=launchX+dist*scale;
 
-            drawCircle(x, 220, 18, "#ffe9b3");
-
-            drawText(x, 225, letter);
+            drawCircle(x,220,18,"#ffe9b3");
+            drawText(x,225,letter);
         }
     };
 
@@ -1019,12 +1008,12 @@ QUIZ_API.ProjectileQuiz = function(id)
     // DETERMINE HIT
     // --------------------------------------------------
 
-    this.GetHit = function(range)
+    this.GetHit=function(range)
     {
-        if(Math.abs(range - self.TargetDistances.A) <= self.HitTolerance) return "A";
-        if(Math.abs(range - self.TargetDistances.B) <= self.HitTolerance) return "B";
-        if(Math.abs(range - self.TargetDistances.C) <= self.HitTolerance) return "C";
-        if(Math.abs(range - self.TargetDistances.D) <= self.HitTolerance) return "D";
+        if(Math.abs(range-self.TargetDistances.A)<=self.HitTolerance) return "A";
+        if(Math.abs(range-self.TargetDistances.B)<=self.HitTolerance) return "B";
+        if(Math.abs(range-self.TargetDistances.C)<=self.HitTolerance) return "C";
+        if(Math.abs(range-self.TargetDistances.D)<=self.HitTolerance) return "D";
 
         return "";
     };
@@ -1033,11 +1022,11 @@ QUIZ_API.ProjectileQuiz = function(id)
     // ACCURACY SCORING
     // --------------------------------------------------
 
-    this.GetAccuracyPoints = function(tries)
+    this.GetAccuracyPoints=function(tries)
     {
-        if(tries == 1) return 3;
-        if(tries == 2) return 2;
-        if(tries == 3) return 1;
+        if(tries==1) return 3;
+        if(tries==2) return 2;
+        if(tries==3) return 1;
 
         return 0;
     };
@@ -1046,19 +1035,19 @@ QUIZ_API.ProjectileQuiz = function(id)
     // LAUNCH
     // --------------------------------------------------
 
-    this.Launch = function()
+    this.Launch=function()
     {
         alert("Launch clicked");
-       
-        if(QuestionAnswered == true)
+
+        if(QuestionAnswered)
         {
-            VisualCode.MessageBox("This question is already completed. Click Next.");
+            VisualCode.MessageBox("This question is already completed.");
             return;
         }
 
-        self.StudentChoice = ddlAnswer.Value;
+        self.StudentChoice=ddlAnswer.Value;
 
-        var angle = parseFloat(txtAngle.Value);
+        var angle=parseFloat(txtAngle.Value);
 
         if(isNaN(angle))
         {
@@ -1068,48 +1057,43 @@ QUIZ_API.ProjectileQuiz = function(id)
 
         self.TryCount++;
 
-        var range =
-            self.RangeFactor *
-            Math.sin(2 * angle * Math.PI / 180);
+        var range=self.RangeFactor*Math.sin(2*angle*Math.PI/180);
 
-        LastRange = range;
-        LastHit = self.GetHit(range);
+        LastRange=range;
+        LastHit=self.GetHit(range);
 
         self.DrawScene();
 
-        if(LastHit == "")
+        if(LastHit=="")
         {
-            drawLandingPoint(range, "red");
+            drawLandingPoint(range,"red");
             VisualCode.MessageBox("Missed all targets.");
             return;
         }
 
-        if(LastHit != self.StudentChoice)
+        if(LastHit!=self.StudentChoice)
         {
-            drawLandingPoint(range, "orange");
-            VisualCode.MessageBox("You hit " + LastHit + ", not " + self.StudentChoice + ".");
+            drawLandingPoint(range,"orange");
+            VisualCode.MessageBox("You hit "+LastHit+", not "+self.StudentChoice);
             return;
         }
 
-        drawLandingPoint(range, "green");
+        drawLandingPoint(range,"green");
 
-        var correct =
-            self.StudentChoice ==
+        var correct=self.StudentChoice==
             self.CorrectAnswers[self.CurrentQuestionIndex];
 
-        if(correct)
-            self.AcademicScore++;
+        if(correct) self.AcademicScore++;
 
-        self.AccuracyScore +=
-            self.GetAccuracyPoints(self.TryCount);
+        self.AccuracyScore+=self.GetAccuracyPoints(self.TryCount);
 
-        QuestionAnswered = true;
+        QuestionAnswered=true;
 
         VisualCode.MessageBox(
-            correct
-            ? "Correct!"
-            : "Incorrect. Correct answer: " +
-              self.CorrectAnswers[self.CurrentQuestionIndex]
+            correct ?
+            "Correct!" :
+            "Incorrect. Correct answer: "+
+            self.CorrectAnswers[self.CurrentQuestionIndex]
         );
     };
 
@@ -1117,9 +1101,9 @@ QUIZ_API.ProjectileQuiz = function(id)
     // NEXT QUESTION
     // --------------------------------------------------
 
-    this.NextQuestion = function()
+    this.NextQuestion=function()
     {
-        if(QuestionAnswered == false)
+        if(!QuestionAnswered)
         {
             VisualCode.MessageBox("Complete this question first.");
             return;
@@ -1127,15 +1111,14 @@ QUIZ_API.ProjectileQuiz = function(id)
 
         self.CurrentQuestionIndex++;
 
-        if(self.CurrentQuestionIndex >= self.CorrectAnswers.length)
+        if(self.CurrentQuestionIndex>=self.CorrectAnswers.length)
         {
             VisualCode.MessageBox(
-                "Quiz finished\n\n" +
-                "Academic Score: " + self.AcademicScore +
-                " / " + self.CorrectAnswers.length +
-                "\nAccuracy Score: " + self.AccuracyScore
+                "Quiz finished\n\n"+
+                "Academic Score: "+self.AcademicScore+
+                " / "+self.CorrectAnswers.length+
+                "\nAccuracy Score: "+self.AccuracyScore
             );
-
             return;
         }
 
@@ -1146,19 +1129,17 @@ QUIZ_API.ProjectileQuiz = function(id)
     // LOAD QUESTION
     // --------------------------------------------------
 
-    this.LoadQuestion = function(index)
+    this.LoadQuestion=function(index)
     {
-        /////lblQuestion.Text = "Answer to Question #" + (index + 1) + ":";
-        ddlAnswer.Title = "Q" + (index + 1);
+        ddlAnswer.Title="Q"+(index+1);
 
-        self.TryCount = 0;
+        self.TryCount=0;
 
-        LastHit = "";
-        LastRange = 0;
-        QuestionAnswered = false;
+        LastHit="";
+        LastRange=0;
+        QuestionAnswered=false;
 
-        self.TargetDistances =
-            self.GenerateTargets(index);
+        self.TargetDistances=self.GenerateTargets(index);
 
         self.DrawScene();
     };
@@ -1167,12 +1148,10 @@ QUIZ_API.ProjectileQuiz = function(id)
     // START QUIZ
     // --------------------------------------------------
 
-    this.Start = function()
+    this.Start=function()
     {
         self.CreateUI();
-
-        self.CurrentQuestionIndex = 0;
-
+        self.CurrentQuestionIndex=0;
         self.LoadQuestion(0);
     };
 };
@@ -1181,18 +1160,17 @@ QUIZ_API.ProjectileQuiz = function(id)
 // EXPORT QUIZ API
 // ======================================================
 
-Object.assign(QUIZ_API, {
-    __version: "1.0.0"
+Object.assign(QUIZ_API,{
+    __version:"1.0.0"
 });
 
-Object.defineProperty(window, "QuizCode", {
-    value: QUIZ_API,
-    writable: false,
-    configurable: false
+Object.defineProperty(window,"QuizCode",{
+    value:QUIZ_API,
+    writable:false,
+    configurable:false
 });
 
-try { console.log("QuizCode loaded:", QUIZ_API.__version); } catch {}
-
+try{console.log("QuizCode loaded:",QUIZ_API.__version);}catch{}
 
 
 
