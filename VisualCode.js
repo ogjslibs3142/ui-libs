@@ -1096,7 +1096,7 @@ var qTitle = ddlAnswer._node().querySelector("label");
 
 if(qTitle)
 {
-    qTitle.style.fontSize = "32px";
+    qTitle.style.fontSize = "24px";
     qTitle.style.fontWeight = "700";
 }
 
