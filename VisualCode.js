@@ -1,6 +1,6 @@
 /* VisualCode.js
    Class-based teaching UI library
-   Version: 4.4.38  (Added CreateCheckbox)
+   Version: 4.4.39  (Added CreateCheckbox)
    Exported global: VisualCode
    This New version includes QuizCode
 */
@@ -780,7 +780,7 @@ ${text}`;
     MessageBox,
     // wiring
     RewireAll,
-    __version: "4.4.38"
+    __version: "4.4.39"
   });
 
   Object.defineProperty(window, "VisualCode", { value: API, writable: false, configurable: false });
@@ -1080,10 +1080,31 @@ QUIZ_API.ProjectileQuiz = function(id)
 
         hostPanel.appendChild(svgWrap);
 
-        VisualCode.RewireAll();
+        ///////////////////////////////////////////////////////
+        //VisualCode.RewireAll();
 
-        ddlAnswer.Value = "";
-        ddlAngle.Value = "";
+        //ddlAnswer.Value = "";
+        //ddlAngle.Value = "";
+
+VisualCode.RewireAll();
+
+// --------------------------------------------------
+// Make Q1 title same size as main title
+// --------------------------------------------------
+
+var qTitle = ddlAnswer._node().querySelector("label");
+
+if(qTitle)
+{
+    qTitle.style.fontSize = "32px";
+    qTitle.style.fontWeight = "700";
+}
+
+ddlAnswer.Value = "";
+ddlAngle.Value = "";
+
+       
+       ////////////////////////////////////////////////////////
 
         var answerElement = document.getElementById(self.Id + "_answer");
         var angleElement = document.getElementById(self.Id + "_angle");
