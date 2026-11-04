@@ -1,6 +1,6 @@
 /* VisualCode.js
    Class-based teaching UI library
-   Version: 4.4.40  (Added CreateCheckbox)
+   Version: 4.4.41  (Added CreateCheckbox)
    Exported global: VisualCode
    This New version includes QuizCode
 */
@@ -766,7 +766,7 @@ ${text}`;
 
 let __weightedAverageFormCounter = 0;
 
-function CreateWeightedAverageForm(title, ...items)
+function CreateWeightedAverageForm(backgroundImageUrl, backgroundOpacity, title, ...items)
 {
     // Validate parameter pairs
     if(items.length == 0 || items.length % 2 != 0)
@@ -778,9 +778,12 @@ function CreateWeightedAverageForm(title, ...items)
         return null;
     }
 
+
     var fields = [];
     var totalWeight = 0;
 
+
+    // Validate categories and weights
     for(var i = 0; i < items.length; i += 2)
     {
         var fieldName = String(items[i]);
@@ -803,7 +806,8 @@ function CreateWeightedAverageForm(title, ...items)
         });
     }
 
-    // Weighted-average percentages must total 100
+
+    // Weights must total 100
     if(Math.abs(totalWeight - 100) > 0.000001)
     {
         MessageBox(
@@ -823,7 +827,7 @@ function CreateWeightedAverageForm(title, ...items)
         __weightedAverageFormCounter;
 
 
-    // Main wrapper puts each form on its own line
+    // Main wrapper
     var formRow = document.createElement("div");
 
     formRow.style.cssText =
@@ -844,7 +848,63 @@ function CreateWeightedAverageForm(title, ...items)
         "border-radius:12px;" +
         "padding:16px;" +
         "box-sizing:border-box;" +
-        "font-family:system-ui,sans-serif;";
+        "font-family:system-ui,sans-serif;" +
+        "position:relative;" +
+        "overflow:hidden;";
+
+
+    // --------------------------------
+    // Optional background image
+    // --------------------------------
+
+    var background = null;
+
+    if(backgroundImageUrl != null && backgroundImageUrl != "")
+    {
+        var opacity = Number(backgroundOpacity);
+
+        // Default opacity if one was not supplied
+        if(backgroundOpacity == null || !Number.isFinite(opacity))
+            opacity = 0.25;
+
+        // Keep opacity between 0 and 1
+        if(opacity < 0)
+            opacity = 0;
+
+        if(opacity > 1)
+            opacity = 1;
+
+
+        background = document.createElement("div");
+
+        background.style.position = "absolute";
+        background.style.left = "0";
+        background.style.top = "0";
+        background.style.width = "100%";
+        background.style.height = "100%";
+
+        background.style.backgroundImage =
+            "url('" + backgroundImageUrl + "')";
+
+        background.style.backgroundSize = "cover";
+        background.style.backgroundPosition = "center";
+        background.style.backgroundRepeat = "no-repeat";
+
+        background.style.opacity = opacity;
+
+        background.style.zIndex = "0";
+
+        form.appendChild(background);
+    }
+
+
+    // Container for all form controls
+    var formContents = document.createElement("div");
+
+    formContents.style.position = "relative";
+    formContents.style.zIndex = "1";
+
+    form.appendChild(formContents);
 
 
     // Form title
@@ -858,7 +918,7 @@ function CreateWeightedAverageForm(title, ...items)
         "font-weight:700;" +
         "margin-bottom:14px;";
 
-    form.appendChild(lblTitle);
+    formContents.appendChild(lblTitle);
 
 
     // Create one textbox for each category
@@ -904,7 +964,7 @@ function CreateWeightedAverageForm(title, ...items)
         fieldWrap.appendChild(label);
         fieldWrap.appendChild(input);
 
-        form.appendChild(fieldWrap);
+        formContents.appendChild(fieldWrap);
     }
 
 
@@ -962,9 +1022,10 @@ function CreateWeightedAverageForm(title, ...items)
     });
 
 
-    form.appendChild(btnCalculate);
+    formContents.appendChild(btnCalculate);
 
     formRow.appendChild(form);
+
 
     var root =
         document.getElementById("app") ||
@@ -973,13 +1034,12 @@ function CreateWeightedAverageForm(title, ...items)
     root.appendChild(formRow);
 
 
-    // Return useful information in case advanced
-    // programs want access to the form later.
     return {
         Id: formId,
         Title: title,
         Fields: fields,
         Element: form,
+        Background: background,
         Button: btnCalculate
     };
 }
@@ -1010,7 +1070,7 @@ function CreateWeightedAverageForm(title, ...items)
     MessageBox,
     // wiring
     RewireAll,
-    __version: "4.4.40"
+    __version: "4.4.41"
   });
 
   Object.defineProperty(window, "VisualCode", { value: API, writable: false, configurable: false });
