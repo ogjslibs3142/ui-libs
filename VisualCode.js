@@ -1,6 +1,6 @@
 /* VisualCode.js
    Class-based teaching UI library
-   Version: 4.4.39  (Added CreateCheckbox)
+   Version: 4.4.40  (Added CreateCheckbox)
    Exported global: VisualCode
    This New version includes QuizCode
 */
@@ -758,6 +758,236 @@ ${text}`;
     return new Promise(res => { resolver = res; });
   }
 
+///////////////////////////////////////////////////////////////////////
+
+// =======================
+// Weighted Average Form
+// =======================
+
+let __weightedAverageFormCounter = 0;
+
+function CreateWeightedAverageForm(title, ...items)
+{
+    // Validate parameter pairs
+    if(items.length == 0 || items.length % 2 != 0)
+    {
+        MessageBox(
+            "CreateWeightedAverageForm requires pairs of category names and weights."
+        );
+
+        return null;
+    }
+
+    var fields = [];
+    var totalWeight = 0;
+
+    for(var i = 0; i < items.length; i += 2)
+    {
+        var fieldName = String(items[i]);
+        var weight = Number(items[i + 1]);
+
+        if(!Number.isFinite(weight))
+        {
+            MessageBox(
+                "Invalid weight for " + fieldName + "."
+            );
+
+            return null;
+        }
+
+        totalWeight += weight;
+
+        fields.push({
+            Name: fieldName,
+            Weight: weight
+        });
+    }
+
+    // Weighted-average percentages must total 100
+    if(Math.abs(totalWeight - 100) > 0.000001)
+    {
+        MessageBox(
+            "The weights for \"" + title + "\" must total 100.\n\n" +
+            "Current total = " + totalWeight
+        );
+
+        return null;
+    }
+
+
+    // Give every form a unique ID
+    __weightedAverageFormCounter++;
+
+    var formId =
+        "vcWeightedAverageForm_" +
+        __weightedAverageFormCounter;
+
+
+    // Main wrapper puts each form on its own line
+    var formRow = document.createElement("div");
+
+    formRow.style.cssText =
+        "width:100%;" +
+        "display:flex;" +
+        "justify-content:center;" +
+        "margin:14px 0;";
+
+
+    // Form
+    var form = document.createElement("div");
+
+    form.id = formId;
+
+    form.style.cssText =
+        "width:min(90%,520px);" +
+        "border:2px solid #999;" +
+        "border-radius:12px;" +
+        "padding:16px;" +
+        "box-sizing:border-box;" +
+        "font-family:system-ui,sans-serif;";
+
+
+    // Form title
+    var lblTitle = document.createElement("div");
+
+    lblTitle.textContent = title;
+
+    lblTitle.style.cssText =
+        "text-align:center;" +
+        "font-size:1.4rem;" +
+        "font-weight:700;" +
+        "margin-bottom:14px;";
+
+    form.appendChild(lblTitle);
+
+
+    // Create one textbox for each category
+    for(var j = 0; j < fields.length; j++)
+    {
+        var field = fields[j];
+
+        var fieldWrap = document.createElement("div");
+
+        fieldWrap.style.cssText =
+            "display:flex;" +
+            "flex-direction:column;" +
+            "gap:5px;" +
+            "margin:10px 0;";
+
+
+        var label = document.createElement("label");
+
+        label.textContent =
+            field.Name + " (" + field.Weight + "%)";
+
+        label.style.cssText =
+            "font-weight:600;" +
+            "font-size:0.95rem;";
+
+
+        var input = document.createElement("input");
+
+        input.type = "text";
+
+        input.id =
+            formId + "_field_" + j;
+
+        input.style.cssText =
+            "width:100%;" +
+            "padding:10px;" +
+            "font-size:1rem;" +
+            "box-sizing:border-box;";
+
+
+        field.Input = input;
+
+        fieldWrap.appendChild(label);
+        fieldWrap.appendChild(input);
+
+        form.appendChild(fieldWrap);
+    }
+
+
+    // Calculate button
+    var btnCalculate = document.createElement("button");
+
+    btnCalculate.type = "button";
+
+    btnCalculate.textContent =
+        "Calculate Weighted Average";
+
+    btnCalculate.style.cssText =
+        "display:block;" +
+        "margin:16px auto 0;" +
+        "padding:10px 16px;" +
+        "font-size:1rem;" +
+        "cursor:pointer;";
+
+
+    btnCalculate.addEventListener("click", function()
+    {
+        var weightedTotal = 0;
+
+        for(var i = 0; i < fields.length; i++)
+        {
+            var value =
+                parseFloat(fields[i].Input.value);
+
+            if(!Number.isFinite(value))
+            {
+                MessageBox(
+                    "Please enter a number for " +
+                    fields[i].Name + "."
+                );
+
+                fields[i].Input.focus();
+
+                return;
+            }
+
+            weightedTotal +=
+                value * fields[i].Weight;
+        }
+
+
+        var weightedAverage =
+            weightedTotal / 100;
+
+
+        MessageBox(
+            "Weighted Average = " +
+            round(weightedAverage, 2),
+            { title: title }
+        );
+    });
+
+
+    form.appendChild(btnCalculate);
+
+    formRow.appendChild(form);
+
+    var root =
+        document.getElementById("app") ||
+        document.body;
+
+    root.appendChild(formRow);
+
+
+    // Return useful information in case advanced
+    // programs want access to the form later.
+    return {
+        Id: formId,
+        Title: title,
+        Fields: fields,
+        Element: form,
+        Button: btnCalculate
+    };
+}
+
+///////////////////////////////////////////////////////////////////////
+
+
+
   // ---------- export ----------
   const Layout = new LayoutManager(document.getElementById("app") || document.body);
 
@@ -766,7 +996,7 @@ ${text}`;
     Layout, NewLine: () => Layout.NewLine(), Add: c => Layout.Add(c),
     // factories
     CreateLabel, CreateButton, CreateTextBox, CreateScrollBar, CreateDropDown, CreateCheckbox, CreateRadioList, CreateImage,
-    Create,
+    Create, CreateWeightedAverageForm,
     // helpers
     SetPageTitle, SetPageColor, GetValue, SetValue, SetStyle,
     SetAutoFlow, SetAutoFlowRoot,
@@ -780,10 +1010,13 @@ ${text}`;
     MessageBox,
     // wiring
     RewireAll,
-    __version: "4.4.39"
+    __version: "4.4.40"
   });
 
   Object.defineProperty(window, "VisualCode", { value: API, writable: false, configurable: false });
+  Object.defineProperty(window,"CreateWeightedAverageForm",{value: CreateWeightedAverageForm,writable: false,configurable: false});
+
+
   try { console.log("VisualCode loaded:", API.__version); } catch {}
 })();
 
