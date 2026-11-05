@@ -1,6 +1,6 @@
 /* VisualCode.js
    Class-based teaching UI library
-   Version: 4.4.41  (Added CreateCheckbox)
+   Version: 4.4.40  (Added create weighted average form function!)
    Exported global: VisualCode
    This New version includes QuizCode
 */
@@ -766,7 +766,7 @@ ${text}`;
 
 let __weightedAverageFormCounter = 0;
 
-function CreateWeightedAverageForm(backgroundImageUrl, backgroundOpacity, title, ...items)
+function CreateWeightedAverageForm(title, ...items)
 {
     // Validate parameter pairs
     if(items.length == 0 || items.length % 2 != 0)
@@ -848,66 +848,11 @@ function CreateWeightedAverageForm(backgroundImageUrl, backgroundOpacity, title,
         "border-radius:12px;" +
         "padding:16px;" +
         "box-sizing:border-box;" +
-        "font-family:system-ui,sans-serif;" +
-        "position:relative;" +
-        "overflow:hidden;";
-
-
-    // --------------------------------
-    // Optional background image
-    // --------------------------------
-
-    var background = null;
-
-    if(backgroundImageUrl != null && backgroundImageUrl != "")
-    {
-        var opacity = Number(backgroundOpacity);
-
-        // Default opacity if one was not supplied
-        if(backgroundOpacity == null || !Number.isFinite(opacity))
-            opacity = 0.25;
-
-        // Keep opacity between 0 and 1
-        if(opacity < 0)
-            opacity = 0;
-
-        if(opacity > 1)
-            opacity = 1;
-
-
-        background = document.createElement("div");
-
-        background.style.position = "absolute";
-        background.style.left = "0";
-        background.style.top = "0";
-        background.style.width = "100%";
-        background.style.height = "100%";
-
-        background.style.backgroundImage =
-            "url('" + backgroundImageUrl + "')";
-
-        background.style.backgroundSize = "cover";
-        background.style.backgroundPosition = "center";
-        background.style.backgroundRepeat = "no-repeat";
-
-        background.style.opacity = opacity;
-
-        background.style.zIndex = "0";
-
-        form.appendChild(background);
-    }
-
-
-    // Container for all form controls
-    var formContents = document.createElement("div");
-
-    formContents.style.position = "relative";
-    formContents.style.zIndex = "1";
-
-    form.appendChild(formContents);
+        "font-family:system-ui,sans-serif;";
 
 
     // Form title
+
     var lblTitle = document.createElement("div");
 
     lblTitle.textContent = title;
@@ -918,7 +863,7 @@ function CreateWeightedAverageForm(backgroundImageUrl, backgroundOpacity, title,
         "font-weight:700;" +
         "margin-bottom:14px;";
 
-    formContents.appendChild(lblTitle);
+    form.appendChild(lblTitle);
 
 
     // Create one textbox for each category
@@ -964,7 +909,7 @@ function CreateWeightedAverageForm(backgroundImageUrl, backgroundOpacity, title,
         fieldWrap.appendChild(label);
         fieldWrap.appendChild(input);
 
-        formContents.appendChild(fieldWrap);
+        form.appendChild(fieldWrap);
     }
 
 
@@ -1022,7 +967,7 @@ function CreateWeightedAverageForm(backgroundImageUrl, backgroundOpacity, title,
     });
 
 
-    formContents.appendChild(btnCalculate);
+    form.appendChild(btnCalculate);
 
     formRow.appendChild(form);
 
@@ -1039,7 +984,6 @@ function CreateWeightedAverageForm(backgroundImageUrl, backgroundOpacity, title,
         Title: title,
         Fields: fields,
         Element: form,
-        Background: background,
         Button: btnCalculate
     };
 }
@@ -1070,7 +1014,7 @@ function CreateWeightedAverageForm(backgroundImageUrl, backgroundOpacity, title,
     MessageBox,
     // wiring
     RewireAll,
-    __version: "4.4.41"
+    __version: "4.4.40"
   });
 
   Object.defineProperty(window, "VisualCode", { value: API, writable: false, configurable: false });
